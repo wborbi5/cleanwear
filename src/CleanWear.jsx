@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { logScan } from "./supabase.js";
-import { BarcodeDetector as BarcodeDetectorPolyfill } from "barcode-detector/ponyfill";
+import { BarcodeDetector as BarcodeDetectorPolyfill } from "barcode-detector";
 
 // ============================================================
 // CLEANWEAR — Clothing Safety Intelligence

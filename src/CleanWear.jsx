@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { logScan } from "./supabase.js";
+import { BarcodeDetector as BarcodeDetectorPolyfill } from "barcode-detector/ponyfill";
 
 // ============================================================
 // CLEANWEAR — Clothing Safety Intelligence
@@ -134,27 +135,59 @@ async function researchProduct(q, bc = false) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query: q, isBarcode: bc }),
   });
-  if (!r.ok) throw new Error("Scan failed");
-  return await r.json();
+  const data = await r.json();
+  if (data.error) throw new Error(data.error);
+  if (!data.product_name) throw new Error("Invalid response");
+  return data;
 }
 
 const EXPLORE_DB = [
+  // Athletic
   { name: "Dri-FIT Tee", brand: "Nike", score: 34, materials: "100% Polyester", cat: "Athletic" },
   { name: "HeatGear Compression", brand: "Under Armour", score: 30, materials: "84% Polyester, 16% Elastane", cat: "Athletic" },
   { name: "Aeroready Tee", brand: "Adidas", score: 36, materials: "100% Recycled Polyester", cat: "Athletic" },
-  { name: "Organic Cotton Tee", brand: "Patagonia", score: 88, materials: "100% Organic Cotton", cat: "Casual" },
   { name: "Merino Base Layer", brand: "Smartwool", score: 87, materials: "100% Merino Wool", cat: "Athletic" },
-  { name: "Better Cotton Tee", brand: "H&M Conscious", score: 65, materials: "100% Cotton (BCI)", cat: "Casual" },
   { name: "Tech Fleece Hoodie", brand: "Nike", score: 32, materials: "66% Cotton, 34% Polyester", cat: "Athletic" },
   { name: "Align Leggings", brand: "Lululemon", score: 29, materials: "81% Nylon, 19% Lycra", cat: "Athletic" },
-  { name: "Organic Boxer Briefs", brand: "Pact", score: 91, materials: "95% Organic Cotton, 5% Spandex", cat: "Underwear" },
-  { name: "ExOfficio Boxer", brand: "ExOfficio", score: 33, materials: "94% Nylon, 6% Spandex", cat: "Underwear" },
+  { name: "Gym Shorts", brand: "Gymshark", score: 31, materials: "88% Polyester, 12% Elastane", cat: "Athletic" },
+  { name: "Compression Tights", brand: "2XU", score: 28, materials: "70% Nylon, 30% Elastane", cat: "Athletic" },
+  { name: "Instinct Shorts", brand: "Gymshark", score: 33, materials: "90% Polyester, 10% Elastane", cat: "Athletic" },
+  { name: "Swiftly Tech Tee", brand: "Lululemon", score: 31, materials: "88% Nylon, 12% Elastane", cat: "Athletic" },
+  { name: "Wunder Train Leggings", brand: "Lululemon", score: 30, materials: "83% Nylon, 17% Lycra", cat: "Athletic" },
+  { name: "Vital Seamless Tee", brand: "Gymshark", score: 32, materials: "92% Nylon, 8% Elastane", cat: "Athletic" },
+  // Casual
+  { name: "Organic Cotton Tee", brand: "Patagonia", score: 88, materials: "100% Organic Cotton", cat: "Casual" },
+  { name: "Better Cotton Tee", brand: "H&M Conscious", score: 65, materials: "100% Cotton (BCI)", cat: "Casual" },
   { name: "Hemp Tee", brand: "prAna", score: 89, materials: "55% Hemp, 45% Organic Cotton", cat: "Casual" },
   { name: "Tencel Modal Tee", brand: "Allbirds", score: 80, materials: "95% TENCEL, 5% Elastane", cat: "Casual" },
-  { name: "Gym Shorts", brand: "Gymshark", score: 31, materials: "88% Polyester, 12% Elastane", cat: "Athletic" },
-  { name: "Classic Boxer Brief", brand: "Calvin Klein", score: 62, materials: "92% Cotton, 8% Elastane", cat: "Underwear" },
   { name: "Linen Camp Shirt", brand: "J.Crew", score: 84, materials: "100% Linen", cat: "Casual" },
-  { name: "Compression Tights", brand: "2XU", score: 28, materials: "70% Nylon, 30% Elastane", cat: "Athletic" },
+  { name: "Essential Tee", brand: "Uniqlo", score: 68, materials: "100% Cotton", cat: "Casual" },
+  { name: "Supima Cotton Tee", brand: "Uniqlo", score: 72, materials: "100% Supima Cotton", cat: "Casual" },
+  { name: "Fleece Hoodie", brand: "Carhartt", score: 55, materials: "80% Cotton, 20% Polyester", cat: "Casual" },
+  { name: "505 Regular Jeans", brand: "Levi's", score: 64, materials: "99% Cotton, 1% Elastane", cat: "Casual" },
+  { name: "Classic Oxford Shirt", brand: "Brooks Brothers", score: 70, materials: "100% Cotton", cat: "Casual" },
+  // Underwear
+  { name: "Organic Boxer Briefs", brand: "Pact", score: 91, materials: "95% Organic Cotton, 5% Spandex", cat: "Underwear" },
+  { name: "ExOfficio Boxer", brand: "ExOfficio", score: 33, materials: "94% Nylon, 6% Spandex", cat: "Underwear" },
+  { name: "Classic Boxer Brief", brand: "Calvin Klein", score: 62, materials: "92% Cotton, 8% Elastane", cat: "Underwear" },
+  { name: "Performance Boxer", brand: "Saxx", score: 34, materials: "95% Polyester, 5% Elastane", cat: "Underwear" },
+  { name: "Organic Bralette", brand: "Pact", score: 90, materials: "95% Organic Cotton, 5% Spandex", cat: "Underwear" },
+  { name: "Seamless Thong", brand: "Victoria's Secret", score: 35, materials: "82% Nylon, 18% Elastane", cat: "Underwear" },
+  // Sleepwear
+  { name: "Organic Pajama Set", brand: "Coyuchi", score: 93, materials: "100% Organic Cotton", cat: "Sleepwear" },
+  { name: "Bamboo Sleep Set", brand: "Cozy Earth", score: 78, materials: "95% Bamboo Viscose, 5% Spandex", cat: "Sleepwear" },
+  { name: "Satin Pajamas", brand: "Victoria's Secret", score: 38, materials: "100% Polyester Satin", cat: "Sleepwear" },
+  { name: "Flannel PJ Pants", brand: "L.L.Bean", score: 72, materials: "100% Cotton Flannel", cat: "Sleepwear" },
+  // Outerwear
+  { name: "Nano Puff Jacket", brand: "Patagonia", score: 45, materials: "100% Recycled Polyester, PFC-free DWR", cat: "Outerwear" },
+  { name: "Thermoball Jacket", brand: "The North Face", score: 36, materials: "100% Nylon, Polyester insulation", cat: "Outerwear" },
+  { name: "Rain Jacket", brand: "Arc'teryx", score: 38, materials: "100% Nylon, Gore-Tex membrane", cat: "Outerwear" },
+  { name: "Wool Overcoat", brand: "J.Crew", score: 82, materials: "80% Wool, 20% Nylon", cat: "Outerwear" },
+  // Kids
+  { name: "Kids Organic Onesie", brand: "Burt's Bees Baby", score: 92, materials: "100% Organic Cotton", cat: "Kids" },
+  { name: "Kids Dri-FIT Tee", brand: "Nike", score: 33, materials: "100% Polyester", cat: "Kids" },
+  { name: "Toddler Leggings", brand: "Cat & Jack", score: 58, materials: "57% Cotton, 38% Polyester, 5% Spandex", cat: "Kids" },
+  { name: "Baby Bodysuit 5-Pack", brand: "Carter's", score: 63, materials: "100% Cotton", cat: "Kids" },
 ];
 
 // ======================== STYLES ========================
@@ -410,10 +443,26 @@ export default function CleanWearApp() {
   const vidRef = useRef(null);
   const streamRef = useRef(null);
   const scanRef = useRef(null);
+  const canvasRef = useRef(null);
 
   useEffect(() => { try { const s = localStorage.getItem("cw_wardrobe"); if (s) setWardrobe(JSON.parse(s)); } catch {} }, []);
   useEffect(() => { if (wardrobe.length > 0) localStorage.setItem("cw_wardrobe", JSON.stringify(wardrobe)); }, [wardrobe]);
   useEffect(() => { const i = setInterval(() => setFactIdx(x => (x + 1) % FUN_FACTS.length), 7000); return () => clearInterval(i); }, []);
+
+  // Browser back button support
+  useEffect(() => {
+    const handlePop = () => {
+      if (view === "results") { setView("scanner"); setResult(null); }
+    };
+    window.addEventListener("popstate", handlePop);
+    return () => window.removeEventListener("popstate", handlePop);
+  }, [view]);
+
+  // Push history state when entering results
+  const navigateToResults = useCallback(() => {
+    window.history.pushState({ view: "results" }, "");
+    setView("results");
+  }, []);
 
   const stopCam = useCallback(() => {
     if (scanRef.current) { clearInterval(scanRef.current); scanRef.current = null; }
@@ -430,13 +479,13 @@ export default function CleanWearApp() {
     const iv = setInterval(() => { si = Math.min(si + 1, steps.length - 1); setLoadStep(steps[si]); }, 2200);
     try {
       const pd = await researchProduct(q, isBc); clearInterval(iv);
-      setResult(pd); const sc2 = calculateScore(pd); setScore(sc2); setView("results");
+      setResult(pd); const sc2 = calculateScore(pd); setScore(sc2); navigateToResults();
       // Track scan
       if (window.posthog) window.posthog.capture('scan_completed', { query: q, score: sc2.overall, brand: pd.brand, product: pd.product_name });
       logScan({ query: q, score: sc2.overall, brand: pd.brand, product: pd.product_name, category: pd.category });
     } catch { clearInterval(iv); setError("Could not analyze this product. Try a more specific search."); }
     finally { setLoading(false); setLoadStep(""); }
-  }, [scanMode]);
+  }, [scanMode, navigateToResults]);
 
   const startCam = useCallback(async () => {
     setCamErr(null); setCamOn(true);
@@ -444,12 +493,29 @@ export default function CleanWearApp() {
       const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } });
       streamRef.current = s;
       if (vidRef.current) { vidRef.current.srcObject = s; await vidRef.current.play(); }
-      if ("BarcodeDetector" in window) {
-        const d = new window.BarcodeDetector({ formats: ["upc_a","upc_e","ean_13","ean_8","code_128","code_39"] });
+
+      // Use native BarcodeDetector if available, otherwise use polyfill (iPhone/Safari)
+      const DetectorClass = ("BarcodeDetector" in window) ? window.BarcodeDetector : BarcodeDetectorPolyfill;
+      try {
+        const d = new DetectorClass({ formats: ["upc_a","upc_e","ean_13","ean_8","code_128","code_39"] });
+        // Create offscreen canvas for frame capture
+        if (!canvasRef.current) canvasRef.current = document.createElement("canvas");
         scanRef.current = setInterval(async () => {
-          if (vidRef.current?.readyState >= 2) { try { const b = await d.detect(vidRef.current); if (b.length) { stopCam(); setQuery(b[0].rawValue); doScan(b[0].rawValue, true); } } catch {} }
-        }, 250);
-      } else setTimeout(() => setCamErr("no_api"), 2000);
+          if (vidRef.current?.readyState >= 2) {
+            try {
+              // Draw video frame to canvas (needed for polyfill on some browsers)
+              const v = vidRef.current;
+              const c = canvasRef.current;
+              c.width = v.videoWidth;
+              c.height = v.videoHeight;
+              c.getContext("2d").drawImage(v, 0, 0);
+              const imgData = c.getContext("2d").getImageData(0, 0, c.width, c.height);
+              const b = await d.detect(imgData);
+              if (b.length) { stopCam(); setQuery(b[0].rawValue); doScan(b[0].rawValue, true); }
+            } catch {}
+          }
+        }, 350);
+      } catch { setCamErr("Barcode scanning not supported on this device. Enter barcode manually."); }
     } catch (e) { setCamOn(false); setCamErr(e.name === "NotAllowedError" ? "Camera access denied. Allow permissions and retry." : "Camera not available. Enter barcode manually."); }
   }, [stopCam, doScan]);
 
@@ -523,7 +589,7 @@ export default function CleanWearApp() {
               <div className="cam-overlay">
                 <div className="cam-region"><div className="cam-line" /></div>
                 <button className="cam-close" onClick={stopCam}>✕</button>
-                <div className="cam-status">{camErr === "no_api" ? "Enter barcode manually below" : "Scanning for barcode…"}</div>
+                <div className="cam-status">Scanning for barcode…</div>
               </div>
             </div>
           ) : camErr ? (
@@ -584,7 +650,7 @@ export default function CleanWearApp() {
 
     return (<>
       <div className="res-hero" style={{ background: sbg(s) }}>
-        <div style={{ padding: "0 20px" }}><button className="bk-btn" onClick={() => { setView("scanner"); setResult(null); }} style={{ marginBottom: 20 }}>← Back</button></div>
+        <div style={{ padding: "0 20px" }}><button className="bk-btn" onClick={() => window.history.back()} style={{ marginBottom: 20 }}>← Back</button></div>
         <div className="res-pn">{result.product_name}</div>
         <div className="res-br">{result.brand} · {result.category}</div>
         <div className="res-circle" style={{ borderColor: col }}>
@@ -721,12 +787,32 @@ export default function CleanWearApp() {
     </>)}
   </>);
 
+  const [exCat, setExCat] = useState("All");
+
   // ========== EXPLORE ==========
   const renderExplore = () => {
-    const f = EXPLORE_DB.filter(i => !exFilter || [i.name, i.brand, i.cat, i.materials].some(s => s.toLowerCase().includes(exFilter.toLowerCase())));
+    const cats = ["All", ...new Set(EXPLORE_DB.map(i => i.cat))];
+    const f = EXPLORE_DB.filter(i => {
+      const matchCat = exCat === "All" || i.cat === exCat;
+      const matchText = !exFilter || [i.name, i.brand, i.cat, i.materials].some(s => s.toLowerCase().includes(exFilter.toLowerCase()));
+      return matchCat && matchText;
+    });
     return (<>
-      <div className="ex-s"><input placeholder="Search brands, products, materials…" value={exFilter} onChange={e => setExFilter(e.target.value)} /></div>
-      <div style={{ padding: "14px 24px 8px" }}><div style={{ fontSize: 11, color: "var(--tx4)", fontWeight: 600, letterSpacing: ".5px" }}>{f.length} PRODUCTS</div></div>
+      <div className="ex-s">
+        <input placeholder="Search brands, products, materials…" value={exFilter} onChange={e => setExFilter(e.target.value)} />
+        <div style={{ display: "flex", gap: 6, marginTop: 12, overflowX: "auto", paddingBottom: 4 }}>
+          {cats.map(c => (
+            <button key={c} onClick={() => setExCat(c)} style={{
+              padding: "7px 16px", borderRadius: 20, border: `1px solid ${exCat === c ? "var(--g6)" : "var(--bd)"}`,
+              background: exCat === c ? "var(--g9)" : "var(--s1)", color: exCat === c ? "var(--g4)" : "var(--tx3)",
+              fontFamily: "var(--sans)", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", transition: "all .2s"
+            }}>{c}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{ padding: "14px 24px 8px" }}>
+        <div style={{ fontSize: 11, color: "var(--tx4)", fontWeight: 600, letterSpacing: ".5px" }}>{f.length} PRODUCTS · TAP TO SCAN</div>
+      </div>
       <div className="ex-g">{f.map((item, i) => (
         <div key={i} className="ex-i" onClick={() => { setQuery(`${item.brand} ${item.name}`); doScan(`${item.brand} ${item.name}`); }}>
           <div className="ex-sc" style={{ background: `${sc(item.score)}14`, color: sc(item.score), border: `1px solid ${sc(item.score)}33` }}>{item.score}</div>

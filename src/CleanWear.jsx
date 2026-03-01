@@ -190,7 +190,82 @@ const EXPLORE_DB = [
   { name: "Baby Bodysuit 5-Pack", brand: "Carter's", score: 63, materials: "100% Cotton", cat: "Kids" },
 ];
 
-// ======================== STYLES ========================
+// ===== FABRIC DETECTIVE =====
+const FD_Q = [
+  { id: "stretch", q: "Stretch Test", inst: "Pull the fabric sideways with both hands, then let go.", opts: [
+    { label: "Snaps right back", value: "elastic", icon: "🔄" },
+    { label: "Stretches a little, slowly returns", value: "slight", icon: "↔️" },
+    { label: "Barely stretches at all", value: "none", icon: "🧱" },
+  ]},
+  { id: "feel", q: "Texture Test", inst: "Rub the fabric between your thumb and fingers.", opts: [
+    { label: "Slick, smooth, almost plasticky", value: "slick", icon: "✨" },
+    { label: "Soft, matte, natural feeling", value: "soft", icon: "☁️" },
+    { label: "Rough, textured, slightly scratchy", value: "rough", icon: "🪨" },
+    { label: "Fuzzy, warm, woolly", value: "fuzzy", icon: "🐑" },
+  ]},
+  { id: "wrinkle", q: "Wrinkle Test", inst: "Scrunch it in your fist for 5 seconds, then release.", opts: [
+    { label: "Springs back smooth", value: "none", icon: "✅" },
+    { label: "Some wrinkles, mostly recovers", value: "some", icon: "〰️" },
+    { label: "Stays wrinkled", value: "lots", icon: "📃" },
+  ]},
+  { id: "sheen", q: "Sheen Test", inst: "Hold the fabric under a light and tilt it.", opts: [
+    { label: "Shiny / reflective", value: "shiny", icon: "💎" },
+    { label: "Completely matte", value: "matte", icon: "⬛" },
+  ]},
+  { id: "temp", q: "Temperature Test", inst: "Press the fabric against your forearm for 3 seconds.", opts: [
+    { label: "Feels cool or cold", value: "cool", icon: "❄️" },
+    { label: "Feels warm or neutral", value: "warm", icon: "🔥" },
+  ]},
+  { id: "use", q: "What type of garment?", inst: "Helps narrow down likely materials.", opts: [
+    { label: "Athletic / sportswear", value: "athletic", icon: "🏃" },
+    { label: "Casual everyday", value: "casual", icon: "👕" },
+    { label: "Dress / formal", value: "formal", icon: "👔" },
+    { label: "Underwear / base layer", value: "underwear", icon: "🩲" },
+    { label: "Sleepwear / lounge", value: "sleep", icon: "😴" },
+  ]},
+];
+
+function predictFabric(a) {
+  let s = { polyester: 0, nylon: 0, cotton: 0, cotton_poly: 0, linen: 0, wool: 0, rayon: 0 }, spandex = false;
+  if (a.stretch === "elastic") spandex = true;
+  if (a.stretch === "none") { s.cotton += 2; s.linen += 3; s.polyester += 1; }
+  if (a.stretch === "slight") { s.cotton += 1; s.cotton_poly += 2; }
+  if (a.feel === "slick") { s.polyester += 4; s.nylon += 3; s.rayon += 1; }
+  if (a.feel === "soft") { s.cotton += 4; s.cotton_poly += 2; s.rayon += 2; }
+  if (a.feel === "rough") { s.linen += 5; s.cotton += 1; }
+  if (a.feel === "fuzzy") { s.wool += 5; }
+  if (a.wrinkle === "none") { s.polyester += 3; s.nylon += 3; s.wool += 1; }
+  if (a.wrinkle === "lots") { s.cotton += 3; s.linen += 4; s.rayon += 2; }
+  if (a.wrinkle === "some") { s.cotton_poly += 3; s.cotton += 1; }
+  if (a.sheen === "shiny") { s.polyester += 2; s.nylon += 2; s.rayon += 1; }
+  if (a.sheen === "matte") { s.cotton += 2; s.linen += 2; s.wool += 1; }
+  if (a.temp === "cool") { s.polyester += 1; s.nylon += 1; s.linen += 1; }
+  if (a.temp === "warm") { s.cotton += 1; s.wool += 2; }
+  if (a.use === "athletic") { s.polyester += 3; s.nylon += 2; spandex = spandex || a.stretch !== "none"; }
+  if (a.use === "formal") { s.cotton += 2; s.cotton_poly += 2; }
+  if (a.use === "sleep") { s.cotton += 2; s.rayon += 1; }
+  if (a.use === "underwear") { s.cotton += 2; s.nylon += 1; }
+  const names = { polyester: "Polyester", nylon: "Nylon", cotton: "Cotton", cotton_poly: "Cotton-Poly Blend", linen: "Linen", wool: "Wool", rayon: "Rayon/Viscose" };
+  const safetyScores = { polyester: 32, nylon: 38, cotton: 72, cotton_poly: 52, linen: 90, wool: 85, rayon: 45 };
+  const chemMap = {
+    polyester: ["Antimony trioxide", "Microplastics", "BPA/BPS"], nylon: ["Microplastics", "Formaldehyde resins"],
+    cotton: ["Formaldehyde (wrinkle treatment)", "Pesticide residues"], cotton_poly: ["Antimony", "Microplastics", "Formaldehyde"],
+    linen: ["Minimal — very low risk"], wool: ["Minimal — very low risk"], rayon: ["Carbon disulfide", "Sodium hydroxide"],
+  };
+  const entries = Object.entries(s).sort((a, b) => b[1] - a[1]);
+  const total = entries.reduce((x, [, v]) => x + v, 0);
+  const primary = entries[0][0];
+  const conf = total > 0 ? Math.min(Math.max(Math.round((entries[0][1] / total) * 100), 35), 92) : 50;
+  let mats = [];
+  if (primary === "cotton_poly") { mats = [{ n: "Cotton", p: 60 }, { n: "Polyester", p: spandex ? 35 : 40 }]; if (spandex) mats.push({ n: "Elastane", p: 5 }); }
+  else if (spandex && ["polyester", "nylon"].includes(primary)) { mats = [{ n: names[primary], p: 85 }, { n: "Elastane", p: 15 }]; }
+  else if (spandex) { mats = [{ n: names[primary], p: 95 }, { n: "Elastane", p: 5 }]; }
+  else if (entries[0][1] - entries[1][1] <= 2 && entries[1][1] > 0) { mats = [{ n: names[primary], p: 65 }, { n: names[entries[1][0]], p: 35 }]; }
+  else { mats = [{ n: names[primary], p: 100 }]; }
+  let safety = safetyScores[primary] || 50;
+  if (spandex) safety = Math.max(safety - 8, 20);
+  return { primary: names[primary], conf, mats, safety, chems: chemMap[primary] || [], spandex, top: entries.slice(0, 4).map(([k, v]) => ({ name: names[k], pct: total > 0 ? Math.round((v / total) * 100) : 0 })) };
+}
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -404,6 +479,45 @@ const CSS = `
 .nav-i.on{color:var(--g4)}
 .nav-ic{font-size:20px}
 
+/* Fabric Detective */
+.fd-sec{padding:36px 24px 0;animation:fadeUp .8s ease-out .35s both}
+.fd-label{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:6px}
+.fd-sub{font-size:13px;color:var(--tx3);margin-bottom:16px;line-height:1.5}
+.fd-start{width:100%;padding:16px;background:linear-gradient(135deg,rgba(201,168,76,.12),rgba(201,168,76,.05));border:1.5px solid rgba(201,168,76,.25);border-radius:16px;color:var(--gold);font-family:var(--sans);font-weight:700;font-size:14px;cursor:pointer;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:10px}
+.fd-start:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(201,168,76,.12);border-color:rgba(201,168,76,.4)}
+.fd-prog{display:flex;gap:4px;margin-bottom:16px}
+.fd-prog-d{flex:1;height:4px;border-radius:2px;background:var(--bd);transition:background .3s}
+.fd-prog-d.done{background:var(--g5)}
+.fd-prog-d.cur{background:var(--g4);box-shadow:0 0 8px rgba(74,222,128,.3)}
+.fd-card{background:var(--s1);border:1px solid var(--bd);border-radius:20px;padding:24px;margin-bottom:14px}
+.fd-qnum{font-size:10px;color:var(--tx4);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px}
+.fd-qtxt{font-family:var(--serif);font-size:19px;font-weight:700;margin-bottom:6px}
+.fd-inst{font-size:13px;color:var(--tx3);font-style:italic;margin-bottom:16px;line-height:1.5}
+.fd-opt{display:flex;flex-direction:column;gap:8px}
+.fd-btn{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--s2);border:1.5px solid var(--bd);border-radius:14px;cursor:pointer;transition:all .2s;color:var(--tx);font-family:var(--sans);font-size:13px;font-weight:500;text-align:left}
+.fd-btn:hover{border-color:var(--g6);background:var(--s3);transform:translateY(-1px)}
+.fd-btn.sel{border-color:var(--g5);background:var(--g9);color:var(--g4)}
+.fd-ic{font-size:20px;min-width:28px;text-align:center}
+.fd-res{animation:fadeUp .5s ease-out both}
+.fd-circ{width:110px;height:110px;border-radius:50%;margin:0 auto 14px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.25);border:3px solid}
+.fd-sc{font-family:var(--serif);font-size:38px;font-weight:800;line-height:1}
+.fd-mat-name{font-family:var(--serif);font-size:20px;font-weight:700;margin-bottom:4px}
+.fd-conf{font-size:13px;color:var(--tx3)}
+.fd-comp{margin-top:16px}
+.fd-comp-r{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.fd-comp-pct{font-family:var(--serif);font-weight:800;font-size:17px;min-width:44px;text-align:right}
+.fd-comp-nm{font-size:13px;font-weight:600;min-width:70px}
+.fd-comp-bar{flex:1;height:7px;border-radius:4px;background:var(--bd);overflow:hidden}
+.fd-comp-fill{height:100%;border-radius:4px;transition:width .8s ease-out}
+.fd-chem{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd);font-size:12px;color:var(--tx2)}
+.fd-chem:last-child{border-bottom:none}
+.fd-chem-dot{width:6px;height:6px;border-radius:50%}
+.fd-top{display:flex;gap:6px;margin-top:14px}
+.fd-top-item{flex:1;text-align:center;padding:10px 6px;background:var(--s2);border-radius:10px}
+.fd-top-nm{font-size:9px;color:var(--tx4);font-weight:600;margin-bottom:4px;letter-spacing:.3px}
+.fd-top-v{font-size:12px;font-weight:700}
+.fd-back{background:none;border:none;color:var(--tx3);font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;padding:6px 0;margin-top:4px}
+
 /* Misc */
 .ld-c{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:100px 24px;gap:24px}
 .ld-spin{width:44px;height:44px;border-radius:50%;border:2.5px solid var(--bd);border-top-color:var(--g4);animation:sp .8s linear infinite}
@@ -440,6 +554,10 @@ export default function CleanWearApp() {
   const [added, setAdded] = useState(false);
   const [camOn, setCamOn] = useState(false);
   const [camErr, setCamErr] = useState(null);
+  const [fdActive, setFdActive] = useState(false);
+  const [fdStep, setFdStep] = useState(0);
+  const [fdAnswers, setFdAnswers] = useState({});
+  const [fdResult, setFdResult] = useState(null);
   const vidRef = useRef(null);
   const streamRef = useRef(null);
   const scanRef = useRef(null);
@@ -617,6 +735,96 @@ export default function CleanWearApp() {
             <button key={item} className="quick-chip" onClick={() => { setQuery(item); doScan(item); }}>{item}</button>
           ))}
         </div>
+      </div>
+
+      {/* Fabric Detective */}
+      <div className="fd-sec">
+        <div className="fd-label">No Tag? No Problem</div>
+        {!fdActive ? (
+          <>
+            <div className="fd-sub">Don't know the brand or materials? Our Fabric Detective identifies your clothing's material composition through 6 quick touch tests — then instantly scores its safety.</div>
+            <button className="fd-start" onClick={() => { setFdActive(true); setFdStep(0); setFdAnswers({}); setFdResult(null); }}>
+              🔍 Start Fabric Detective
+            </button>
+          </>
+        ) : !fdResult ? (
+          <>
+            <div className="fd-prog">
+              {FD_Q.map((_, i) => <div key={i} className={`fd-prog-d ${i < fdStep ? "done" : i === fdStep ? "cur" : ""}`} />)}
+            </div>
+            <div className="fd-card">
+              <div className="fd-qnum">Question {fdStep + 1} of {FD_Q.length}</div>
+              <div className="fd-qtxt">{FD_Q[fdStep].q}</div>
+              <div className="fd-inst">{FD_Q[fdStep].inst}</div>
+              <div className="fd-opt">
+                {FD_Q[fdStep].opts.map(opt => (
+                  <button key={opt.value} className={`fd-btn ${fdAnswers[FD_Q[fdStep].id] === opt.value ? "sel" : ""}`}
+                    onClick={() => {
+                      const na = { ...fdAnswers, [FD_Q[fdStep].id]: opt.value };
+                      setFdAnswers(na);
+                      if (fdStep < FD_Q.length - 1) setTimeout(() => setFdStep(fdStep + 1), 200);
+                      else setTimeout(() => setFdResult(predictFabric(na)), 300);
+                    }}>
+                    <span className="fd-ic">{opt.icon}</span>{opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {fdStep > 0 && <button className="fd-back" onClick={() => setFdStep(fdStep - 1)}>← Back</button>}
+              <button className="fd-back" onClick={() => { setFdActive(false); setFdResult(null); }}>Cancel</button>
+            </div>
+          </>
+        ) : (
+          <div className="fd-res">
+            <div className="fd-card" style={{ textAlign: "center" }}>
+              <div className="fd-circ" style={{ borderColor: sc(fdResult.safety) }}>
+                <div className="fd-sc" style={{ color: sc(fdResult.safety) }}>{fdResult.safety}</div>
+                <div style={{ fontSize: 11, opacity: .4, marginTop: 2 }}>/100</div>
+              </div>
+              <div className="fd-mat-name">{fdResult.primary}{fdResult.spandex && !fdResult.primary.includes("Blend") ? " + Spandex" : ""}</div>
+              <div className="fd-conf">{fdResult.conf}% detection confidence</div>
+              <div className="fd-comp">
+                {fdResult.mats.map((m, i) => (
+                  <div key={i} className="fd-comp-r">
+                    <div className="fd-comp-pct" style={{ color: sc(fdResult.safety) }}>{m.p}%</div>
+                    <div className="fd-comp-nm">{m.n}</div>
+                    <div className="fd-comp-bar"><div className="fd-comp-fill" style={{ width: `${m.p}%`, background: sc(fdResult.safety) }} /></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="fd-card">
+              <div className="fd-qnum">Likely Chemical Exposure</div>
+              {fdResult.chems.map((c, i) => (
+                <div key={i} className="fd-chem">
+                  <div className="fd-chem-dot" style={{ background: c.includes("Minimal") ? "var(--g4)" : "var(--r4)" }} />
+                  {c}
+                </div>
+              ))}
+            </div>
+            <div className="fd-card">
+              <div className="fd-qnum">Material Confidence</div>
+              <div className="fd-top">
+                {fdResult.top.map((t, i) => (
+                  <div key={i} className="fd-top-item">
+                    <div className="fd-top-nm">{t.name}</div>
+                    <div className="fd-top-v" style={{ color: i === 0 ? "var(--g4)" : "var(--tx4)" }}>{t.pct}%</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button className="fd-start" onClick={() => {
+              const matQuery = fdResult.mats.map(m => `${m.p}% ${m.n}`).join(", ") + " " + (fdAnswers.use || "casual") + " garment";
+              setQuery(matQuery); doScan(matQuery);
+              setFdActive(false); setFdResult(null);
+            }}>🔬 Get Full Safety Analysis →</button>
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <button className="fd-back" onClick={() => { setFdStep(0); setFdAnswers({}); setFdResult(null); }}>Test Another</button>
+              <button className="fd-back" onClick={() => { setFdActive(false); setFdResult(null); }}>Close</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Facts */}

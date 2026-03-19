@@ -1,5 +1,12 @@
 // Vercel Serverless Function — /api/scan
-// ANTHROPIC_API_KEY set in Vercel dashboard → Settings → Environment Variables
+// 4-LAYER LOOKUP: Supabase cache → Open Products Facts → Claude AI → keyword fallback
+// Every scan result is cached in Supabase so the database grows with every user.
+
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = (process.env.VITE_SUPABASE_URL && process.env.VITE_SUPABASE_ANON_KEY)
+  ? createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY)
+  : null
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -14,10 +21,62 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing query' })
   }
 
+  const q = query.trim()
+
+  // ========================================
+  // LAYER 1: Check Supabase product cache
+  // ========================================
+  if (supabase) {
+    try {
+      const cached = isBarcode
+        ? await supabase.from('products').select('data').eq('barcode', q).maybeSingle()
+        : await supabase.from('products').select('data').ilike('search_key', `%${q}%`).limit(1).maybeSingle()
+
+      if (cached?.data?.data) {
+        console.log('[scan] Cache hit:', q)
+        return res.status(200).json({ ...cached.data.data, _source: 'cache' })
+      }
+    } catch (e) {
+      console.warn('[scan] Cache lookup failed:', e.message)
+    }
+  }
+
+  // ========================================
+  // LAYER 2: Open Products Facts (barcodes only)
+  // ========================================
+  let opfResult = null
+  if (isBarcode) {
+    try {
+      const opfRes = await fetch(
+        `https://world.openproductsfacts.org/api/v3/product/${q}.json`,
+        { headers: { 'User-Agent': 'CleanWear/1.0 (cleanwear.app)' } }
+      )
+      if (opfRes.ok) {
+        const opfData = await opfRes.json()
+        if (opfData?.product?.product_name) {
+          opfResult = parseOpenProductsFacts(opfData.product)
+          console.log('[scan] Open Products Facts hit:', opfResult.product_name)
+        }
+      }
+    } catch (e) {
+      console.warn('[scan] Open Products Facts failed:', e.message)
+    }
+  }
+
+  if (opfResult) {
+    const enriched = enrichWithChemicals(opfResult)
+    await cacheProduct(q, isBarcode, enriched)
+    return res.status(200).json({ ...enriched, _source: 'open_products_facts' })
+  }
+
+  // ========================================
+  // LAYER 3: Claude AI analysis
+  // ========================================
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
-    // No API key — use fallback analysis instead of erroring
-    return res.status(200).json(buildFallback(query, isBarcode))
+    const fb = buildFallback(query, isBarcode)
+    await cacheProduct(q, isBarcode, fb)
+    return res.status(200).json({ ...fb, _source: 'fallback' })
   }
 
   const systemPrompt = `You are a textile safety analyst. Analyze ANY clothing or textile product for chemical safety.
@@ -45,8 +104,8 @@ Return ONLY this JSON:
 Always 2-3 safer alternatives. Empty arrays for certifications if none known.`
 
   const userMessage = isBarcode
-    ? `Analyze clothing product with barcode/UPC: ${query}. Search the web for this barcode. If you can't identify it, analyze as a generic garment.`
-    : `Analyze this clothing product for chemical safety: ${query}`
+    ? `Analyze clothing product with barcode/UPC: ${q}. Search the web for this barcode. If you can't identify it, analyze as a generic garment.`
+    : `Analyze this clothing product for chemical safety: ${q}`
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -67,7 +126,9 @@ Always 2-3 safer alternatives. Empty arrays for certifications if none known.`
 
     if (!response.ok) {
       console.error('Anthropic API error:', response.status)
-      return res.status(200).json(buildFallback(query, isBarcode))
+      const fb = buildFallback(query, isBarcode)
+      await cacheProduct(q, isBarcode, fb)
+      return res.status(200).json({ ...fb, _source: 'fallback' })
     }
 
     const data = await response.json()
@@ -77,18 +138,21 @@ Always 2-3 safer alternatives. Empty arrays for certifications if none known.`
       .join('\n')
 
     if (!textContent) {
-      return res.status(200).json(buildFallback(query, isBarcode))
+      const fb = buildFallback(query, isBarcode)
+      await cacheProduct(q, isBarcode, fb)
+      return res.status(200).json({ ...fb, _source: 'fallback' })
     }
 
     const jsonMatch = textContent.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
-      return res.status(200).json(buildFallback(query, isBarcode))
+      const fb = buildFallback(query, isBarcode)
+      await cacheProduct(q, isBarcode, fb)
+      return res.status(200).json({ ...fb, _source: 'fallback' })
     }
 
     try {
       const pd = JSON.parse(jsonMatch[0].replace(/```json|```/g, '').trim())
 
-      // Fill in any missing fields so frontend never crashes
       pd.product_name = pd.product_name || query
       pd.brand = pd.brand || 'Unknown Brand'
       pd.category = pd.category || 'Clothing'
@@ -98,23 +162,126 @@ Always 2-3 safer alternatives. Empty arrays for certifications if none known.`
       pd.origin = pd.origin || 'Unknown'
       pd.health_notes = pd.health_notes || ''
       pd.alternatives = Array.isArray(pd.alternatives) ? pd.alternatives : []
-
-      // Ensure materials have valid percentages
       pd.materials = pd.materials.filter(m => m.name && typeof m.percentage === 'number')
 
-      return res.status(200).json(pd)
+      await cacheProduct(q, isBarcode, pd)
+      return res.status(200).json({ ...pd, _source: 'claude' })
     } catch {
-      return res.status(200).json(buildFallback(query, isBarcode))
+      const fb = buildFallback(query, isBarcode)
+      await cacheProduct(q, isBarcode, fb)
+      return res.status(200).json({ ...fb, _source: 'fallback' })
     }
   } catch (err) {
     console.error('Scan error:', err)
-    return res.status(200).json(buildFallback(query, isBarcode))
+    const fb = buildFallback(query, isBarcode)
+    await cacheProduct(q, isBarcode, fb)
+    return res.status(200).json({ ...fb, _source: 'fallback' })
   }
 }
 
 // ========================================
-// FALLBACK — keyword-based analysis when API fails
-// Always returns a valid product analysis
+// OPEN PRODUCTS FACTS PARSER
+// ========================================
+function parseOpenProductsFacts(product) {
+  const name = product.product_name || product.product_name_en || 'Unknown Product'
+  const brand = product.brands || 'Unknown Brand'
+  const categories = product.categories || product.categories_tags?.join(', ') || 'Clothing'
+
+  const materialsRaw = product.materials_tags || product.labels_tags || []
+  const materials = []
+  const matMap = {
+    'cotton': 'Cotton', 'polyester': 'Polyester', 'nylon': 'Nylon',
+    'wool': 'Wool', 'silk': 'Silk', 'linen': 'Linen',
+    'elastane': 'Elastane', 'spandex': 'Spandex', 'viscose': 'Viscose',
+    'acrylic': 'Acrylic', 'hemp': 'Hemp', 'bamboo': 'Bamboo',
+  }
+
+  materialsRaw.forEach(tag => {
+    const clean = tag.replace(/^[a-z]{2}:/, '').toLowerCase()
+    if (matMap[clean]) materials.push({ name: matMap[clean], percentage: 100 })
+  })
+
+  if (materials.length > 1) {
+    const share = Math.round(100 / materials.length)
+    materials.forEach((m, i) => {
+      m.percentage = i === 0 ? 100 - (share * (materials.length - 1)) : share
+    })
+  }
+
+  const origin = product.origins || product.manufacturing_places || 'Unknown'
+  const labels = (product.labels || '').toLowerCase()
+  const certifications = []
+  if (labels.includes('oeko-tex') || labels.includes('oekotex')) certifications.push('oeko-tex')
+  if (labels.includes('gots')) certifications.push('gots')
+  if (labels.includes('bluesign')) certifications.push('bluesign')
+  if (labels.includes('fair trade') || labels.includes('fairtrade')) certifications.push('fair_trade')
+
+  return {
+    product_name: name,
+    brand: brand.split(',')[0].trim(),
+    category: categories.split(',')[0].trim(),
+    materials,
+    chemicals: [],
+    certifications,
+    origin,
+    health_notes: 'Product data from Open Products Facts. Chemical analysis based on material composition.',
+    alternatives: [
+      { name: 'Organic Cotton Tee', brand: 'Patagonia', reason: 'GOTS certified organic cotton, minimal chemical treatments.' },
+      { name: 'Merino Wool Base Layer', brand: 'Smartwool', reason: 'Natural fibers without synthetic chemical treatments.' },
+      { name: 'Hemp Blend Tee', brand: 'prAna', reason: 'Hemp is naturally pest-resistant, minimal chemical processing.' },
+    ],
+  }
+}
+
+// ========================================
+// CHEMICAL ENRICHMENT
+// ========================================
+function enrichWithChemicals(pd) {
+  const chemicals = new Set()
+  pd.materials.forEach(m => {
+    const n = m.name.toLowerCase()
+    if (n.includes('polyester')) { chemicals.add('antimony'); chemicals.add('microplastics'); chemicals.add('bpa') }
+    if (n.includes('nylon')) { chemicals.add('microplastics'); chemicals.add('formaldehyde') }
+    if (n.includes('spandex') || n.includes('elastane') || n.includes('lycra')) { chemicals.add('phthalates') }
+    if (n.includes('acrylic')) { chemicals.add('microplastics') }
+    if (n.includes('cotton') && !n.includes('organic')) { chemicals.add('formaldehyde') }
+  })
+  pd.certifications.forEach(c => {
+    if (c === 'oeko-tex') { chemicals.delete('formaldehyde'); chemicals.delete('heavy_metals') }
+    if (c === 'gots') { chemicals.delete('formaldehyde'); chemicals.delete('phthalates') }
+    if (c === 'bluesign') { chemicals.delete('formaldehyde') }
+  })
+  pd.chemicals = [...chemicals]
+  return pd
+}
+
+// ========================================
+// CACHE WRITE
+// ========================================
+async function cacheProduct(query, isBarcode, productData) {
+  if (!supabase) return
+  try {
+    const record = {
+      barcode: isBarcode ? query : null,
+      search_key: productData.product_name?.toLowerCase() || query.toLowerCase(),
+      brand: productData.brand || null,
+      product_name: productData.product_name || query,
+      category: productData.category || null,
+      data: productData,
+      updated_at: new Date().toISOString(),
+    }
+    if (isBarcode && query) {
+      await supabase.from('products').upsert(record, { onConflict: 'barcode' })
+    } else {
+      await supabase.from('products').upsert(record, { onConflict: 'search_key' })
+    }
+  } catch (e) {
+    console.warn('[scan] Cache write failed:', e.message)
+  }
+}
+
+// ========================================
+// LAYER 4: KEYWORD FALLBACK
 // ========================================
 function buildFallback(query, isBarcode) {
   const q = query.toLowerCase()
@@ -128,7 +295,6 @@ function buildFallback(query, isBarcode) {
   const hasLinen = /linen|flax/.test(q)
   const hasHemp = /hemp/.test(q)
   const hasSilk = /silk|satin/.test(q)
-
   const isAthletic = /nike|adidas|under armour|gymshark|lululemon|reebok|puma|2xu|gym|athletic|sport|workout|running|compression|dri-fit|legging|tight|shorts|jersey/.test(q)
   const isSafe = /patagonia|allbirds|pact|coyuchi|smartwool|icebreaker|prana/.test(q)
   const isFastFashion = /shein|temu|primark|fashion nova|boohoo|romwe|zaful/.test(q)
@@ -136,64 +302,34 @@ function buildFallback(query, isBarcode) {
   const materials = []
   const chemicals = []
 
-  if (hasOrganic && hasCotton) {
-    materials.push({ name: 'Organic Cotton', percentage: 95 }, { name: 'Spandex', percentage: 5 })
-    chemicals.push('phthalates')
-  } else if (hasWool) {
-    materials.push({ name: 'Merino Wool', percentage: 100 })
-  } else if (hasLinen) {
-    materials.push({ name: 'Linen', percentage: 100 })
-  } else if (hasHemp) {
-    materials.push({ name: 'Hemp', percentage: 55 }, { name: 'Organic Cotton', percentage: 45 })
-  } else if (hasSilk) {
-    materials.push({ name: 'Silk', percentage: 100 })
-  } else if (hasPoly && hasSpandex) {
-    materials.push({ name: 'Polyester', percentage: 85 }, { name: 'Elastane', percentage: 15 })
-    chemicals.push('antimony', 'microplastics', 'phthalates', 'bpa')
-  } else if (hasPoly) {
-    materials.push({ name: 'Polyester', percentage: 100 })
-    chemicals.push('antimony', 'microplastics', 'bpa')
-  } else if (hasNylon && hasSpandex) {
-    materials.push({ name: 'Nylon', percentage: 82 }, { name: 'Elastane', percentage: 18 })
-    chemicals.push('microplastics', 'phthalates', 'formaldehyde')
-  } else if (hasNylon) {
-    materials.push({ name: 'Nylon', percentage: 100 })
-    chemicals.push('microplastics', 'formaldehyde')
-  } else if (hasCotton && hasSpandex) {
-    materials.push({ name: 'Cotton', percentage: 92 }, { name: 'Elastane', percentage: 8 })
-    chemicals.push('formaldehyde', 'phthalates')
-  } else if (hasCotton) {
-    materials.push({ name: 'Cotton', percentage: 100 })
-    chemicals.push('formaldehyde')
-  } else if (isAthletic) {
-    materials.push({ name: 'Polyester', percentage: 88 }, { name: 'Elastane', percentage: 12 })
-    chemicals.push('antimony', 'microplastics', 'phthalates', 'bpa')
-  } else if (isFastFashion) {
-    materials.push({ name: 'Polyester', percentage: 65 }, { name: 'Cotton', percentage: 30 }, { name: 'Elastane', percentage: 5 })
-    chemicals.push('antimony', 'microplastics', 'formaldehyde', 'phthalates', 'azo_dyes', 'heavy_metals')
-  } else {
-    // Generic clothing default
-    materials.push({ name: 'Cotton', percentage: 60 }, { name: 'Polyester', percentage: 35 }, { name: 'Elastane', percentage: 5 })
-    chemicals.push('antimony', 'microplastics', 'formaldehyde', 'phthalates')
-  }
+  if (hasOrganic && hasCotton) { materials.push({ name: 'Organic Cotton', percentage: 95 }, { name: 'Spandex', percentage: 5 }); chemicals.push('phthalates') }
+  else if (hasWool) { materials.push({ name: 'Merino Wool', percentage: 100 }) }
+  else if (hasLinen) { materials.push({ name: 'Linen', percentage: 100 }) }
+  else if (hasHemp) { materials.push({ name: 'Hemp', percentage: 55 }, { name: 'Organic Cotton', percentage: 45 }) }
+  else if (hasSilk) { materials.push({ name: 'Silk', percentage: 100 }) }
+  else if (hasPoly && hasSpandex) { materials.push({ name: 'Polyester', percentage: 85 }, { name: 'Elastane', percentage: 15 }); chemicals.push('antimony', 'microplastics', 'phthalates', 'bpa') }
+  else if (hasPoly) { materials.push({ name: 'Polyester', percentage: 100 }); chemicals.push('antimony', 'microplastics', 'bpa') }
+  else if (hasNylon && hasSpandex) { materials.push({ name: 'Nylon', percentage: 82 }, { name: 'Elastane', percentage: 18 }); chemicals.push('microplastics', 'phthalates', 'formaldehyde') }
+  else if (hasNylon) { materials.push({ name: 'Nylon', percentage: 100 }); chemicals.push('microplastics', 'formaldehyde') }
+  else if (hasCotton && hasSpandex) { materials.push({ name: 'Cotton', percentage: 92 }, { name: 'Elastane', percentage: 8 }); chemicals.push('formaldehyde', 'phthalates') }
+  else if (hasCotton) { materials.push({ name: 'Cotton', percentage: 100 }); chemicals.push('formaldehyde') }
+  else if (isAthletic) { materials.push({ name: 'Polyester', percentage: 88 }, { name: 'Elastane', percentage: 12 }); chemicals.push('antimony', 'microplastics', 'phthalates', 'bpa') }
+  else if (isFastFashion) { materials.push({ name: 'Polyester', percentage: 65 }, { name: 'Cotton', percentage: 30 }, { name: 'Elastane', percentage: 5 }); chemicals.push('antimony', 'microplastics', 'formaldehyde', 'phthalates', 'azo_dyes', 'heavy_metals') }
+  else { materials.push({ name: 'Cotton', percentage: 60 }, { name: 'Polyester', percentage: 35 }, { name: 'Elastane', percentage: 5 }); chemicals.push('antimony', 'microplastics', 'formaldehyde', 'phthalates') }
 
   const brand = extractBrand(q) || 'Unknown Brand'
-  const productName = isBarcode
-    ? `Product (Barcode: ${query})`
-    : query.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+  const productName = isBarcode ? `Product (Barcode: ${query})` : query.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
 
   return {
-    product_name: productName,
-    brand,
+    product_name: productName, brand,
     category: isAthletic ? 'Athletic' : 'Casual',
-    materials,
-    chemicals,
+    materials, chemicals,
     certifications: hasOrganic ? ['oeko-tex'] : [],
     origin: isSafe ? 'Vietnam' : isFastFashion ? 'China' : 'Unknown',
     health_notes: 'Analysis based on typical materials for this product type. Check your garment label for exact composition.',
     alternatives: [
       { name: 'Organic Cotton Tee', brand: 'Patagonia', reason: 'GOTS certified organic cotton, minimal chemical treatments, transparent supply chain.' },
-      { name: 'Merino Wool Base Layer', brand: 'Smartwool', reason: 'Natural temperature regulation without synthetic chemicals. Antimicrobial without chemical treatment.' },
+      { name: 'Merino Wool Base Layer', brand: 'Smartwool', reason: 'Natural temperature regulation without synthetic chemicals.' },
       { name: 'Hemp Blend Tee', brand: 'prAna', reason: 'Hemp is naturally pest-resistant, requiring minimal pesticides and chemical processing.' },
     ],
   }
@@ -218,8 +354,6 @@ function extractBrand(q) {
     'on running': 'On Running', 'vuori': 'Vuori', 'alo yoga': 'Alo Yoga', 'fabletics': 'Fabletics',
     'athleta': 'Athleta', 'outdoor voices': 'Outdoor Voices',
   }
-  for (const [key, name] of Object.entries(brands)) {
-    if (q.includes(key)) return name
-  }
+  for (const [key, name] of Object.entries(brands)) { if (q.includes(key)) return name }
   return null
 }

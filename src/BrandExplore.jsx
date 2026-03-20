@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BRANDS, BRAND_TIERS } from "./brandDatabase.js";
 
-function sc(s) { if (s >= 75) return "#4ade80"; if (s >= 60) return "#a3e635"; if (s >= 45) return "#facc15"; if (s >= 30) return "#fb923c"; return "#f87171"; }
+function sc(s) { if (s >= 75) return "#16a34a"; if (s >= 60) return "#65a30d"; if (s >= 45) return "#ca8a04"; if (s >= 30) return "#ea580c"; return "#dc2626"; }
 
 export default function BrandExplore({ onScanProduct }) {
   const [search, setSearch] = useState("");

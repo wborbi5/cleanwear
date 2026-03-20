@@ -1,0 +1,664 @@
+import { useState, useEffect, useRef } from "react";
+
+// ═══════════════════════════════════════════════════════════════
+// CLEANWEAR LANDING — Yuka-inspired. Warm, human, direct.
+// ═══════════════════════════════════════════════════════════════
+
+const Shield = ({ size = 32 }) => (
+  <svg width={size} height={size} viewBox="0 0 32 32" style={{ display: "block" }}>
+    <defs><linearGradient id="shd" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#22c55e" /><stop offset="100%" stopColor="#166534" /></linearGradient></defs>
+    <path d="M16 2 C16 2 4 5 4 14 C4 20.5 8 26 16 30 C24 26 28 20.5 28 14 C28 5 16 2 16 2Z" fill="url(#shd)" />
+    <path d="M16 10 C16 10 13.5 13 13.5 17 C13.5 19.5 15 21 16 22 C17 21 18.5 19.5 18.5 17 C18.5 13 16 10 16 10Z" fill="#f0fdf4" opacity="0.9" />
+    <line x1="16" y1="13" x2="16" y2="21" stroke="#166534" strokeWidth="0.7" opacity="0.5" />
+    <line x1="14.5" y1="15.5" x2="16" y2="17" stroke="#166534" strokeWidth="0.5" opacity="0.4" />
+    <line x1="17.5" y1="15.5" x2="16" y2="17" stroke="#166534" strokeWidth="0.5" opacity="0.4" />
+    <line x1="14.2" y1="17.5" x2="16" y2="19" stroke="#166534" strokeWidth="0.5" opacity="0.4" />
+    <line x1="17.8" y1="17.5" x2="16" y2="19" stroke="#166534" strokeWidth="0.5" opacity="0.4" />
+  </svg>
+);
+
+// Score circle component — like Yuka's colored circles
+const ScoreCircle = ({ score, size = 64 }) => {
+  const color = score >= 70 ? "#22c55e" : score >= 40 ? "#eab308" : "#ef4444";
+  const label = score >= 70 ? "Good" : score >= 40 ? "Mediocre" : "Bad";
+  const r = (size / 2) - 4;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (score / 100) * circ;
+  return (
+    <div style={{ position: "relative", width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#f0f0ee" strokeWidth="5" />
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth="5"
+          strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
+          transform={`rotate(-90 ${size/2} ${size/2})`} style={{ transition: "stroke-dashoffset 1s ease" }} />
+      </svg>
+      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontWeight: 800, fontSize: size * 0.3, color, lineHeight: 1 }}>{score}</div>
+        <div style={{ fontSize: size * 0.14, color: "#888", fontWeight: 500 }}>/100</div>
+      </div>
+    </div>
+  );
+};
+
+// ─── ANIMATED SCAN DEMO ───────────────────────────────────────
+// Loops: camera → tag detected → analyzing → score result → pause → restart
+const SCAN_STAGES = [
+  { id: "camera", duration: 2200 },    // Camera viewfinder
+  { id: "detected", duration: 1000 },  // Tag detected flash
+  { id: "analyzing", duration: 2000 }, // Analyzing spinner
+  { id: "result", duration: 4000 },    // Score reveal + hold
+];
+const TOTAL_CYCLE = SCAN_STAGES.reduce((a, s) => a + s.duration, 0);
+
+function ScanDemo() {
+  const [stage, setStage] = useState("camera");
+  const [cycle, setCycle] = useState(0);
+
+  useEffect(() => {
+    let elapsed = 0;
+    const timers = SCAN_STAGES.map((s) => {
+      const t = setTimeout(() => setStage(s.id), elapsed);
+      elapsed += s.duration;
+      return t;
+    });
+    const loopTimer = setTimeout(() => setCycle((c) => c + 1), TOTAL_CYCLE);
+    return () => { timers.forEach(clearTimeout); clearTimeout(loopTimer); };
+  }, [cycle]);
+
+  const isCamera = stage === "camera";
+  const isDetected = stage === "detected";
+  const isAnalyzing = stage === "analyzing";
+  const isResult = stage === "result";
+
+  return (
+    <div style={{ maxWidth: 280, margin: "0 auto", position: "relative" }}>
+      {/* Phone frame */}
+      <div style={{
+        background: "#1a1a1a", borderRadius: 32, padding: "12px 10px",
+        boxShadow: "0 12px 48px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08)",
+      }}>
+        {/* Notch */}
+        <div style={{ width: 80, height: 6, background: "#333", borderRadius: 3, margin: "0 auto 8px" }} />
+
+        {/* Screen */}
+        <div style={{
+          borderRadius: 22, overflow: "hidden", position: "relative",
+          background: isResult ? "#fff" : "#111",
+          height: 380, transition: "background 0.4s ease",
+        }}>
+
+          {/* ── CAMERA STAGE ── */}
+          <div style={{
+            position: "absolute", inset: 0,
+            opacity: (isCamera || isDetected) ? 1 : 0,
+            transition: "opacity 0.4s ease",
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          }}>
+            {/* Fake camera bg */}
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(145deg, #1a1a18, #2a2820, #1e1e1a)", opacity: 0.95 }} />
+
+            {/* Tag shape */}
+            <div style={{
+              position: "relative", width: 160, height: 100,
+              background: "#f5f0e8", borderRadius: 6, padding: "10px 14px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+              transform: isDetected ? "scale(1.02)" : "scale(1)",
+              transition: "transform 0.3s ease",
+            }}>
+              {/* Tag content lines */}
+              <div style={{ fontSize: 9, fontWeight: 700, color: "#333", marginBottom: 6, letterSpacing: 0.5 }}>NIKE</div>
+              <div style={{ fontSize: 7, color: "#666", marginBottom: 3 }}>100% Polyester</div>
+              <div style={{ fontSize: 7, color: "#666", marginBottom: 3 }}>Made in Vietnam</div>
+              <div style={{ fontSize: 7, color: "#999", marginBottom: 6 }}>Machine wash cold</div>
+              <div style={{ display: "flex", gap: 3, marginTop: 4 }}>
+                {[28, 28, 28, 16, 16].map((w, i) => (
+                  <div key={i} style={{ width: w, height: 3, background: "#ccc", borderRadius: 1 }} />
+                ))}
+              </div>
+              {/* Detection border */}
+              <div style={{
+                position: "absolute", inset: -4, borderRadius: 10,
+                border: isDetected ? "2.5px solid #22c55e" : "2px solid rgba(74,222,128,0.3)",
+                boxShadow: isDetected ? "0 0 16px rgba(34,197,94,0.4)" : "none",
+                transition: "all 0.3s ease",
+              }} />
+            </div>
+
+            {/* Scan line */}
+            <div style={{
+              position: "absolute", left: 40, right: 40,
+              height: 2, background: "linear-gradient(90deg, transparent, #4ade80, transparent)",
+              top: isCamera ? "30%" : "65%",
+              opacity: isCamera ? 0.8 : 0,
+              transition: "top 2s ease-in-out, opacity 0.3s",
+            }} />
+
+            {/* Status text */}
+            <div style={{
+              position: "absolute", bottom: 24, left: 0, right: 0,
+              textAlign: "center", fontSize: 12, fontWeight: 600,
+              color: isDetected ? "#4ade80" : "#888",
+              transition: "color 0.3s",
+            }}>
+              {isDetected ? "✓ Tag detected" : "Point camera at clothing tag"}
+            </div>
+          </div>
+
+          {/* ── ANALYZING STAGE ── */}
+          <div style={{
+            position: "absolute", inset: 0,
+            opacity: isAnalyzing ? 1 : 0,
+            transition: "opacity 0.4s ease",
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            background: "#111",
+          }}>
+            {/* Spinner */}
+            <div style={{
+              width: 40, height: 40, borderRadius: "50%",
+              border: "3px solid #333", borderTopColor: "#4ade80",
+              animation: isAnalyzing ? "cw-spin 0.8s linear infinite" : "none",
+              marginBottom: 16,
+            }} />
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#ccc", marginBottom: 6 }}>
+              Analyzing...
+            </div>
+            <div style={{ fontSize: 11, color: "#666" }}>
+              Identifying chemicals
+            </div>
+          </div>
+
+          {/* ── RESULT STAGE ── */}
+          <div style={{
+            position: "absolute", inset: 0,
+            opacity: isResult ? 1 : 0,
+            transform: isResult ? "translateY(0)" : "translateY(12px)",
+            transition: "all 0.5s cubic-bezier(0.16,1,0.3,1)",
+            display: "flex", flexDirection: "column", alignItems: "center",
+            padding: "28px 20px",
+            background: "#fff",
+          }}>
+            {/* Score circle */}
+            <ScoreCircle score={28} size={80} />
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#ef4444", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 12, marginBottom: 4 }}>
+              Bad · 28/100
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#1a1a1a", marginBottom: 2 }}>
+              Dri-FIT Training Tee
+            </div>
+            <div style={{ fontSize: 13, color: "#999", marginBottom: 16 }}>
+              Nike · Athletic Shirt
+            </div>
+
+            {/* Chemical tags */}
+            <div style={{ display: "flex", gap: 5, flexWrap: "wrap", justifyContent: "center", marginBottom: 16 }}>
+              {["Formaldehyde", "Antimony", "BPA"].map((c) => (
+                <span key={c} style={{
+                  padding: "3px 9px", background: "#fef2f2", borderRadius: 5,
+                  fontSize: 11, color: "#b91c1c", fontWeight: 600,
+                }}>
+                  {c}
+                </span>
+              ))}
+            </div>
+
+            <div style={{ fontSize: 12, color: "#888", lineHeight: 1.5, textAlign: "center" }}>
+              3 chemicals linked to cancer and hormone disruption that absorb through your skin.
+            </div>
+          </div>
+
+          {/* CleanWear header bar */}
+          <div style={{
+            position: "absolute", top: 0, left: 0, right: 0,
+            padding: "10px 16px", display: "flex", alignItems: "center",
+            justifyContent: "space-between", zIndex: 5,
+            background: isResult ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.4)",
+            backdropFilter: "blur(8px)",
+            transition: "background 0.4s",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <Shield size={14} />
+              <span style={{
+                fontSize: 12, fontWeight: 700,
+                color: isResult ? "#1a1a1a" : "#fff",
+                transition: "color 0.4s",
+              }}>
+                Clean<em style={{ fontStyle: "italic", color: "#16a34a", fontWeight: 500 }}>Wear</em>
+              </span>
+            </div>
+            <div style={{
+              width: 6, height: 6, borderRadius: "50%",
+              background: isResult ? "#ef4444" : "#22c55e",
+              boxShadow: isResult ? "0 0 6px #ef4444" : "0 0 6px #22c55e",
+              transition: "all 0.4s",
+            }} />
+          </div>
+        </div>
+      </div>
+
+      {/* "Live demo" label under phone */}
+      <div style={{ textAlign: "center", marginTop: 16, fontSize: 13, color: "#999" }}>
+        Scanning a Nike tag — live demo
+      </div>
+    </div>
+  );
+}
+
+export default function LandingPage({ onLaunchApp }) {
+  const [scrolled, setScrolled] = useState(false);
+  const [demoQuery, setDemoQuery] = useState("");
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoResult, setDemoResult] = useState(null);
+
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 30);
+    window.addEventListener("scroll", fn, { passive: true });
+    return () => window.removeEventListener("scroll", fn);
+  }, []);
+
+  const handleDemo = async () => {
+    if (!demoQuery.trim() || demoLoading) return;
+    setDemoLoading(true);
+    setDemoResult(null);
+    try {
+      const res = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: demoQuery }),
+      });
+      const data = await res.json();
+      let score = 70;
+      (data.chemicals || []).forEach((c) => {
+        if (["bpa", "pfas", "formaldehyde"].includes(c)) score -= 15;
+        else if (["antimony", "phthalates", "azo_dyes", "heavy_metals"].includes(c)) score -= 10;
+        else score -= 5;
+      });
+      (data.materials || []).forEach((m) => {
+        const n = (m.name || "").toLowerCase();
+        if (n.includes("organic") || n.includes("hemp") || n.includes("linen")) score += 8;
+        if (n.includes("polyester") || n.includes("nylon") || n.includes("acrylic")) score -= 8;
+      });
+      score = Math.max(5, Math.min(98, score));
+      setDemoResult({ ...data, _score: score });
+    } catch {
+      setDemoResult({ product_name: demoQuery, brand: "Unknown", _score: 45, chemicals: ["formaldehyde", "microplastics"], _error: true });
+    }
+    setDemoLoading(false);
+  };
+
+  const demoScoreColor = (s) => s >= 70 ? "#22c55e" : s >= 40 ? "#eab308" : "#ef4444";
+  const demoScoreLabel = (s) => s >= 70 ? "Good" : s >= 40 ? "Mediocre" : "Bad";
+
+  const F = "'Plus Jakarta Sans',sans-serif";
+  const S = "'Playfair Display',serif";
+
+  return (
+    <div style={{ fontFamily: F, background: "#fafaf7", color: "#2c2c2c", minHeight: "100vh" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+      {/* NAV */}
+      <nav style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+        background: scrolled ? "rgba(250,250,247,0.95)" : "transparent",
+        backdropFilter: scrolled ? "blur(16px)" : "none",
+        borderBottom: scrolled ? "1px solid #e8e8e4" : "1px solid transparent",
+        transition: "all 0.3s",
+      }}>
+        <div style={{ maxWidth: 1000, margin: "0 auto", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Shield size={28} />
+            <span style={{ fontFamily: S, fontSize: 19, fontWeight: 700, color: "#1a1a1a" }}>
+              Clean<em style={{ fontStyle: "italic", color: "#16a34a", fontWeight: 500 }}>Wear</em>
+            </span>
+          </div>
+          <button onClick={onLaunchApp} style={{
+            padding: "10px 24px", background: "#16a34a", color: "#fff",
+            border: "none", borderRadius: 24, fontSize: 14, fontWeight: 600,
+            fontFamily: F, cursor: "pointer",
+          }}>
+            Scan now
+          </button>
+        </div>
+      </nav>
+
+      {/* ═══ HERO ═══ */}
+      <section style={{
+        paddingTop: 100, paddingBottom: 60,
+        background: "linear-gradient(180deg, #f2f7f0 0%, #fafaf7 100%)",
+        textAlign: "center", position: "relative", overflow: "hidden",
+      }}>
+        {/* Soft decorative blob */}
+        <div style={{ position: "absolute", top: -80, right: -120, width: 400, height: 400, borderRadius: "50%", background: "rgba(74,222,128,0.07)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -60, left: -80, width: 300, height: 300, borderRadius: "50%", background: "rgba(74,222,128,0.05)", pointerEvents: "none" }} />
+
+        <div style={{ maxWidth: 660, margin: "0 auto", padding: "0 24px", position: "relative" }}>
+          <h1 style={{
+            fontFamily: S, fontSize: "clamp(30px, 5vw, 48px)", fontWeight: 800,
+            lineHeight: 1.2, color: "#1a1a1a", marginBottom: 16,
+          }}>
+            Know what's really in your clothes
+          </h1>
+          <p style={{
+            fontSize: "clamp(16px, 2.2vw, 20px)", lineHeight: 1.6,
+            color: "#666", maxWidth: 480, margin: "0 auto 36px",
+          }}>
+            CleanWear scans your clothing and shows you which chemicals are absorbing into your body — so you can find safer alternatives.
+          </p>
+          <button onClick={onLaunchApp} style={{
+            padding: "16px 40px", background: "#16a34a", color: "#fff",
+            border: "none", borderRadius: 28, fontSize: 17, fontWeight: 700,
+            fontFamily: F, cursor: "pointer", marginBottom: 48,
+            boxShadow: "0 4px 16px rgba(22,163,74,0.25)",
+          }}>
+            Scan your first item
+          </button>
+
+          {/* Animated phone scanning demo */}
+          <ScanDemo />
+        </div>
+      </section>
+
+      {/* ═══ A 100% INDEPENDENT PROJECT — same structure as Yuka ═══ */}
+      <section style={{ padding: "72px 24px", background: "#fff" }}>
+        <div style={{ maxWidth: 880, margin: "0 auto", textAlign: "center" }}>
+          <h2 style={{ fontFamily: S, fontSize: "clamp(24px, 3.5vw, 36px)", fontWeight: 800, color: "#1a1a1a", marginBottom: 48 }}>
+            A 100% independent project
+          </h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 28 }}>
+            {[
+              { icon: "🛡️", title: "No influence from brands", desc: "No brand or manufacturer can influence the scores or recommendations. Every rating is based on published research." },
+              { icon: "🚫", title: "No ads", desc: "Brands cannot pay CleanWear to promote their products. You will never see advertising in the app." },
+              { icon: "🔬", title: "Peer-reviewed science", desc: "Every score traces to studies from IARC, EFSA, and peer-reviewed journals. We cite our sources — always." },
+            ].map((item, i) => (
+              <div key={i} style={{ padding: "28px 20px", textAlign: "center" }}>
+                <div style={{ fontSize: 36, marginBottom: 16 }}>{item.icon}</div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>{item.title}</div>
+                <p style={{ fontSize: 15, color: "#777", lineHeight: 1.6, margin: 0 }}>{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ THE PROBLEM — simple, human ═══ */}
+      <section style={{ padding: "72px 24px", background: "#f6f9f4" }}>
+        <div style={{ maxWidth: 680, margin: "0 auto", textAlign: "center" }}>
+          <h2 style={{ fontFamily: S, fontSize: "clamp(24px, 3.5vw, 36px)", fontWeight: 800, color: "#1a1a1a", marginBottom: 16 }}>
+            Your clothes aren't just on your body
+          </h2>
+          <p style={{ fontSize: "clamp(15px, 2vw, 18px)", color: "#666", lineHeight: 1.7, marginBottom: 36 }}>
+            Chemicals in clothing absorb through your skin — especially when you sweat. The EU restricts over 1,000 chemicals in textiles. The US restricts almost none for adults. Most people have no idea what they're wearing.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, maxWidth: 440, margin: "0 auto" }}>
+            {[
+              { num: "1,000+", label: "chemicals the EU restricts", color: "#16a34a" },
+              { num: "~0", label: "restricted in the US for adults", color: "#ef4444" },
+              { num: "22×", label: "above safe BPA limits in sportswear", color: "#eab308" },
+              { num: "5×", label: "faster absorption when sweating", color: "#16a34a" },
+            ].map((s, i) => (
+              <div key={i} style={{ background: "#fff", borderRadius: 16, padding: "20px 16px", textAlign: "center", border: "1px solid #e8e8e4" }}>
+                <div style={{ fontFamily: S, fontSize: 32, fontWeight: 800, color: s.color, lineHeight: 1, marginBottom: 6 }}>{s.num}</div>
+                <div style={{ fontSize: 13, color: "#888", lineHeight: 1.4 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ GET RECOMMENDATIONS — Yuka-style bad→good comparison ═══ */}
+      <section style={{ padding: "72px 24px", background: "#fff" }}>
+        <div style={{ maxWidth: 680, margin: "0 auto", textAlign: "center" }}>
+          <h2 style={{ fontFamily: S, fontSize: "clamp(24px, 3.5vw, 36px)", fontWeight: 800, color: "#1a1a1a", marginBottom: 16 }}>
+            Find safer alternatives
+          </h2>
+          <p style={{ fontSize: 16, color: "#777", lineHeight: 1.6, marginBottom: 40 }}>
+            When a garment scores poorly, CleanWear recommends similar items with fewer chemicals — so you don't have to guess.
+          </p>
+
+          {/* Product comparison cards */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 520, margin: "0 auto" }}>
+            {[
+              {
+                bad: { name: "Dri-FIT Training Tee", brand: "Nike", score: 28, materials: "100% Polyester" },
+                good: { name: "Organic Cotton Tee", brand: "Patagonia", score: 88, materials: "100% Organic Cotton" },
+              },
+              {
+                bad: { name: "Align Leggings", brand: "Lululemon", score: 29, materials: "81% Nylon, 19% Lycra" },
+                good: { name: "Organic Leggings", brand: "Pact", score: 87, materials: "95% Organic Cotton, 5% Spandex" },
+              },
+            ].map((pair, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                {/* Bad product */}
+                <div style={{ flex: 1, background: "#fef7f7", borderRadius: 18, padding: "18px 16px", border: "1px solid #fde8e8", textAlign: "center" }}>
+                  <ScoreCircle score={pair.bad.score} size={52} />
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginTop: 8 }}>{pair.bad.name}</div>
+                  <div style={{ fontSize: 12, color: "#999" }}>{pair.bad.brand}</div>
+                  <div style={{ fontSize: 11, color: "#bbb", marginTop: 4 }}>{pair.bad.materials}</div>
+                </div>
+
+                {/* Arrow */}
+                <div style={{ fontSize: 24, color: "#ccc", flexShrink: 0 }}>→</div>
+
+                {/* Good product */}
+                <div style={{ flex: 1, background: "#f2faf2", borderRadius: 18, padding: "18px 16px", border: "1px solid #dcf5dc", textAlign: "center" }}>
+                  <ScoreCircle score={pair.good.score} size={52} />
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1a1a", marginTop: 8 }}>{pair.good.name}</div>
+                  <div style={{ fontSize: 12, color: "#999" }}>{pair.good.brand}</div>
+                  <div style={{ fontSize: 11, color: "#bbb", marginTop: 4 }}>{pair.good.materials}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ TRY IT NOW — live scan demo ═══ */}
+      <section style={{ padding: "72px 24px", background: "#f6f9f4" }}>
+        <div style={{ maxWidth: 540, margin: "0 auto", textAlign: "center" }}>
+          <h2 style={{ fontFamily: S, fontSize: "clamp(24px, 3.5vw, 36px)", fontWeight: 800, color: "#1a1a1a", marginBottom: 12 }}>
+            Try it right now
+          </h2>
+          <p style={{ fontSize: 16, color: "#777", lineHeight: 1.6, marginBottom: 32 }}>
+            Type any brand and product. See what comes back.
+          </p>
+
+          <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+            <input
+              type="text"
+              placeholder="e.g. Nike Dri-FIT Tee"
+              value={demoQuery}
+              onChange={(e) => setDemoQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleDemo(); }}
+              style={{
+                flex: 1, padding: "14px 18px",
+                background: "#fff", border: "2px solid #d4e4d0",
+                borderRadius: 14, fontSize: 16, fontFamily: F,
+                color: "#1a1a1a", outline: "none",
+              }}
+              onFocus={(e) => { e.target.style.borderColor = "#22c55e"; }}
+              onBlur={(e) => { e.target.style.borderColor = "#d4e4d0"; }}
+            />
+            <button
+              onClick={handleDemo}
+              disabled={demoLoading}
+              style={{
+                padding: "14px 24px", background: "#16a34a", color: "#fff",
+                border: "none", borderRadius: 14, fontSize: 15, fontWeight: 700,
+                fontFamily: F, cursor: demoLoading ? "wait" : "pointer",
+                opacity: demoLoading ? 0.7 : 1, whiteSpace: "nowrap",
+              }}
+            >
+              {demoLoading ? "Scanning..." : "Scan"}
+            </button>
+          </div>
+
+          {/* Quick try chips */}
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 28 }}>
+            {["Nike Dri-FIT Tee", "Lululemon Align Leggings", "Patagonia Organic Tee"].map((item) => (
+              <button
+                key={item}
+                onClick={() => { setDemoQuery(item); }}
+                style={{
+                  padding: "6px 14px", background: "#fff",
+                  border: "1px solid #d4e4d0", borderRadius: 20,
+                  fontSize: 13, color: "#555", fontFamily: F,
+                  fontWeight: 500, cursor: "pointer",
+                }}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+
+          {/* Result */}
+          {demoResult && (
+            <div style={{
+              background: "#fff", borderRadius: 22, padding: "28px 24px",
+              border: "1px solid #e8e8e4", textAlign: "center",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, justifyContent: "center" }}>
+                <ScoreCircle score={demoResult._score} size={68} />
+                <div style={{ textAlign: "left" }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 700, letterSpacing: 0.5,
+                    textTransform: "uppercase", marginBottom: 4,
+                    color: demoScoreColor(demoResult._score),
+                  }}>
+                    {demoScoreLabel(demoResult._score)} · {demoResult._score}/100
+                  </div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: "#1a1a1a" }}>{demoResult.product_name}</div>
+                  <div style={{ fontSize: 13, color: "#999" }}>{demoResult.brand}</div>
+                </div>
+              </div>
+              {demoResult.chemicals?.length > 0 && (
+                <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap", marginBottom: 16 }}>
+                  {demoResult.chemicals.slice(0, 4).map((c, i) => (
+                    <span key={i} style={{
+                      padding: "4px 10px", background: "#fef2f2",
+                      borderRadius: 6, fontSize: 12, color: "#b91c1c", fontWeight: 500,
+                    }}>
+                      {(typeof c === "string" ? c : c.name || c).replace(/_/g, " ")}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={onLaunchApp}
+                style={{
+                  padding: "12px 28px", background: "#16a34a", color: "#fff",
+                  border: "none", borderRadius: 20, fontSize: 14, fontWeight: 700,
+                  fontFamily: F, cursor: "pointer",
+                }}
+              >
+                See full results →
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ═══ HOW IT WORKS — dead simple ═══ */}
+      <section style={{ padding: "72px 24px", background: "#fff" }}>
+        <div style={{ maxWidth: 760, margin: "0 auto", textAlign: "center" }}>
+          <h2 style={{ fontFamily: S, fontSize: "clamp(24px, 3.5vw, 36px)", fontWeight: 800, color: "#1a1a1a", marginBottom: 48 }}>
+            How it works
+          </h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 32 }}>
+            {[
+              { num: "1", icon: "📷", title: "Scan", desc: "Search a product, scan a barcode, or take a photo of the clothing tag." },
+              { num: "2", icon: "📊", title: "Understand", desc: "See which chemicals are present, how they affect your body, and the research behind it." },
+              { num: "3", icon: "✅", title: "Switch", desc: "Find safer alternatives instantly — same type of garment, fewer harmful chemicals." },
+            ].map((step, i) => (
+              <div key={i} style={{ textAlign: "center" }}>
+                <div style={{
+                  width: 56, height: 56, borderRadius: "50%",
+                  background: "#e8f5e4", display: "flex", alignItems: "center", justifyContent: "center",
+                  margin: "0 auto 14px", fontSize: 28,
+                }}>
+                  {step.icon}
+                </div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: "#1a1a1a", marginBottom: 6 }}>{step.title}</div>
+                <p style={{ fontSize: 15, color: "#777", lineHeight: 1.6, margin: 0 }}>{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ WHY WE BUILT THIS ═══ */}
+      <section style={{ padding: "72px 24px", background: "#f6f9f4" }}>
+        <div style={{ maxWidth: 600, margin: "0 auto", textAlign: "center" }}>
+          <h2 style={{ fontFamily: S, fontSize: "clamp(24px, 3.5vw, 36px)", fontWeight: 800, color: "#1a1a1a", marginBottom: 16 }}>
+            Why we built CleanWear
+          </h2>
+          <p style={{ fontSize: 16, color: "#666", lineHeight: 1.75, marginBottom: 24 }}>
+            We started CleanWear because we were shocked to learn what's in the clothes we wear every day. Formaldehyde in gym shirts. BPA in sports bras at 22× above safe limits. Carcinogens in children's pajamas.
+          </p>
+          <p style={{ fontSize: 16, color: "#666", lineHeight: 1.75, marginBottom: 24 }}>
+            The EU protects its citizens with strict chemical regulations. The US has almost nothing for adult clothing. We believe that needs to change — and it starts with awareness.
+          </p>
+          <p style={{ fontSize: 16, color: "#444", lineHeight: 1.75, fontWeight: 600 }}>
+            CleanWear exists so you can make informed choices about what touches your skin every single day.
+          </p>
+        </div>
+      </section>
+
+      {/* ═══ CTA ═══ */}
+      <section style={{
+        padding: "72px 24px",
+        background: "linear-gradient(180deg, #f2f7f0, #e4f0df)",
+        textAlign: "center",
+      }}>
+        <Shield size={44} />
+        <h2 style={{ fontFamily: S, fontSize: "clamp(24px, 3.5vw, 36px)", fontWeight: 800, color: "#1a1a1a", margin: "16px 0 12px" }}>
+          Scan your clothes. Know the truth.
+        </h2>
+        <p style={{ fontSize: 17, color: "#555", marginBottom: 28 }}>
+          It's free and takes three seconds.
+        </p>
+        <button onClick={onLaunchApp} style={{
+          padding: "16px 44px", background: "#16a34a", color: "#fff",
+          border: "none", borderRadius: 28, fontSize: 17, fontWeight: 700,
+          fontFamily: F, cursor: "pointer",
+          boxShadow: "0 4px 16px rgba(22,163,74,0.25)",
+        }}>
+          Scan now
+        </button>
+      </section>
+
+      {/* ═══ FOOTER ═══ */}
+      <footer style={{ padding: "40px 24px 28px", background: "#1a2e1a", color: "#8aab8a" }}>
+        <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 32 }}>
+          <div style={{ maxWidth: 320 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <Shield size={24} />
+              <span style={{ fontFamily: S, fontSize: 18, fontWeight: 700, color: "#d4e8d4" }}>
+                Clean<em style={{ fontStyle: "italic", color: "#4ade80", fontWeight: 500 }}>Wear</em>
+              </span>
+            </div>
+            <p style={{ fontSize: 14, lineHeight: 1.7, color: "#6b8f6b", margin: 0 }}>
+              The most dangerous thing in your closet shouldn't be invisible.
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: 40, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#5a7d5a", marginBottom: 12 }}>App</div>
+              <div onClick={onLaunchApp} style={{ fontSize: 14, color: "#8aab8a", marginBottom: 8, cursor: "pointer" }}>Scan your clothes</div>
+              <a href="#" style={{ fontSize: 14, color: "#8aab8a", textDecoration: "none", display: "block" }}>How it works</a>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#5a7d5a", marginBottom: 12 }}>Project</div>
+              <a href="mailto:hello@cleanwear.app" style={{ fontSize: 14, color: "#8aab8a", textDecoration: "none", display: "block", marginBottom: 8 }}>Contact</a>
+              <div style={{ fontSize: 14, color: "#8aab8a" }}>Methodology</div>
+            </div>
+          </div>
+        </div>
+        <div style={{ maxWidth: 800, margin: "24px auto 0", borderTop: "1px solid #2a4a2a", paddingTop: 16, fontSize: 12, color: "#5a7d5a" }}>
+          © 2026 CleanWear · Scores are risk estimates based on peer-reviewed research, not lab test results.
+        </div>
+      </footer>
+
+      <style>{`html{scroll-behavior:smooth}@keyframes cw-spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+}

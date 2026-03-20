@@ -30,12 +30,12 @@ const STUDIES = {
 // ─── CHEMICAL DATABASE ────────────────────────────────────────
 const CHEM_DB = {
   formaldehyde: { name: "Formaldehyde", plain: "A known human carcinogen used as anti-wrinkle treatment", icon: "⚠️", group: "Group 1", groupLabel: "Carcinogenic to humans", sweat: "Release increases 150–300% in the presence of sweat", studies: ["formaldehyde_iarc", "formaldehyde_sweat", "formaldehyde_melanoma"], color: "#f87171" },
-  antimony: { name: "Antimony Trioxide", plain: "A suspected carcinogen in 85% of polyester", icon: "☢️", group: "Group 2B", groupLabel: "Possibly carcinogenic to humans", sweat: "Body heat and acidic sweat accelerate leaching from polyester", studies: ["antimony_sweat", "antimony_iarc"], color: "#c9a84c" },
+  antimony: { name: "Antimony Trioxide", plain: "A suspected carcinogen in 85% of polyester", icon: "☢️", group: "Group 2B", groupLabel: "Possibly carcinogenic to humans", sweat: "Body heat and acidic sweat accelerate leaching from polyester", studies: ["antimony_sweat", "antimony_iarc"], color: T.chemSweatColor },
   bpa: { name: "Bisphenol A (BPA)", plain: "A hormone disruptor at dangerous levels in activewear", icon: "🧬", group: "Endocrine Disruptor", groupLabel: "Mimics estrogen in the human body", sweat: "Sweat-soaked polyester exceeds safe daily BPA intake by 125–570×", studies: ["bpa_clothing", "bpa_sweat_tdi"], color: "#a78bfa" },
   pfas: { name: "PFAS (Forever Chemicals)", plain: "Indestructible chemicals in water-repellent clothing", icon: "♾️", group: "Group 2B", groupLabel: "Possibly carcinogenic (PFOA)", sweat: "Never breaks down — accumulates in your body over a lifetime", studies: ["sweat_leaching"], color: "#f87171" },
-  phthalates: { name: "Phthalates", plain: "Plasticizers that disrupt hormones", icon: "⚠️", group: "Endocrine Disruptor", groupLabel: "Linked to reduced testosterone and fertility", sweat: "Leach from plastisol prints and stretchy synthetic fabrics", studies: ["sweat_leaching"], color: "#c9a84c" },
+  phthalates: { name: "Phthalates", plain: "Plasticizers that disrupt hormones", icon: "⚠️", group: "Endocrine Disruptor", groupLabel: "Linked to reduced testosterone and fertility", sweat: "Leach from plastisol prints and stretchy synthetic fabrics", studies: ["sweat_leaching"], color: T.chemSweatColor },
   azo_dyes: { name: "Azo Dyes", plain: "Textile dyes that release carcinogenic compounds", icon: "🎨", group: "Group 1 (amines)", groupLabel: "Some breakdown products confirmed carcinogens", sweat: "Sweat and friction release carcinogenic aromatic amines", studies: ["sweat_leaching"], color: "#f87171" },
-  microplastics: { name: "Microplastic Shedding", plain: "Microscopic plastic entering your bloodstream", icon: "🔬", group: "Emerging Concern", groupLabel: "Found in 80% of human blood samples tested", sweat: "Synthetics shed thousands of fibers per wear absorbed through skin", studies: ["microplastic_shedding", "microplastic_ingestion"], color: "#c9a84c" },
+  microplastics: { name: "Microplastic Shedding", plain: "Microscopic plastic entering your bloodstream", icon: "🔬", group: "Emerging Concern", groupLabel: "Found in 80% of human blood samples tested", sweat: "Synthetics shed thousands of fibers per wear absorbed through skin", studies: ["microplastic_shedding", "microplastic_ingestion"], color: T.chemSweatColor },
   heavy_metals: { name: "Heavy Metals in Dyes", plain: "Lead, chromium, cadmium from textile dyes", icon: "🔬", group: "Group 1/2A", groupLabel: "Multiple confirmed or probable carcinogens", sweat: "Acidic sweat dissolves heavy metal residues from dyes", studies: ["sweat_leaching"], color: "#f87171" },
 };
 
@@ -53,7 +53,7 @@ function getFoodEquivs(score, chemIds, materials) {
       stat: "4–6", unit: "hot plastic bottles daily",
       desc: "Your polyester shirt uses the same antimony catalyst as plastic water bottles. Sweat accelerates the leaching — just like heat with bottled water.",
       src: "Biver et al., Reg. Tox. Pharm., 2021 · Westerhoff et al., Water Research, 2008",
-      sids: ["antimony_sweat", "antimony_bottles"], color: "#c9a84c",
+      sids: ["antimony_sweat", "antimony_bottles"], color: T.chemSweatColor,
     });
   }
   if (chemIds.includes("bpa") && (hasPoly || hasSpan)) {
@@ -71,7 +71,7 @@ function getFoodEquivs(score, chemIds, materials) {
       stat: "~1", unit: "grocery bag of plastic per year",
       desc: "Synthetic fabrics shed thousands of microplastic fibers per wear. Combined with food and water sources, textile-derived microplastics are a major exposure route.",
       src: "Mitrano et al., Env. Sci. Tech., 2017 · Cox et al., Env. Sci. Tech., 2019",
-      sids: ["microplastic_shedding", "microplastic_ingestion"], color: "#c9a84c",
+      sids: ["microplastic_shedding", "microplastic_ingestion"], color: T.chemSweatColor,
     });
   }
   if (equivs.length === 0 && score < 70) {
@@ -80,7 +80,7 @@ function getFoodEquivs(score, chemIds, materials) {
       stat: "5×", unit: "when your skin is moist",
       desc: "Dermal absorption jumps from 13% to 63% as humidity rises. Every workout in this garment amplifies chemical transfer into your body.",
       src: "Kezic & Nielsen, Int. Arch. Occup. Env. Health, 2009",
-      sids: ["humidity_absorption"], color: "#c9a84c",
+      sids: ["humidity_absorption"], color: T.chemSweatColor,
     });
   }
   return equivs;
@@ -88,9 +88,47 @@ function getFoodEquivs(score, chemIds, materials) {
 
 // ─── HELPERS ──────────────────────────────────────────────────
 function scoreColor(s) {
-  if (s >= 70) return { text: "#4ade80", label: "LOW RISK", glow: "rgba(74,222,128,0.25)" };
+  if (s >= 70) return { text: "#16a34a", label: "LOW RISK", glow: "rgba(22,163,74,0.12)" };
+  if (s >= 50) return { text: "#ca8a04", label: "MODERATE RISK", glow: "rgba(202,138,4,0.1)" };
   if (s >= 40) return { text: "#c9a84c", label: "MODERATE RISK", glow: "rgba(201,168,76,0.15)" };
   return { text: "#f87171", label: "HIGH RISK", glow: "rgba(248,113,113,0.25)" };
+}
+
+// Dark theme for bad scores (<50), light for everything else
+function getTheme(score) {
+  const dark = score < 50;
+  return {
+    dark,
+    bg: dark ? "#030a03" : "#fafaf7",
+    cardBg: dark ? "rgba(255,255,255,0.02)" : "#ffffff",
+    cardBorder: dark ? "rgba(255,255,255,0.06)" : "#e2e8e0",
+    text: dark ? "#e8e8e8" : "#1a2e1a",
+    textSub: dark ? "#a1a1aa" : "#666666",
+    textMuted: dark ? "#71717a" : "#999999",
+    textFaint: dark ? "#52525b" : "#bbbbbb",
+    heading: dark ? "#ffffff" : "#1a1a1a",
+    backBtnBg: dark ? "rgba(255,255,255,0.06)" : "#ffffff",
+    backBtnBorder: dark ? "rgba(255,255,255,0.1)" : "#e2e8e0",
+    backBtnColor: dark ? "#a1a1aa" : "#666666",
+    tagBg: dark ? "rgba(255,255,255,0.06)" : "#f6f9f4",
+    tagBorder: dark ? "rgba(255,255,255,0.08)" : "#e2e8e0",
+    tagColor: dark ? "#a1a1aa" : "#3a5c3a",
+    sciMethodBg: dark ? "rgba(74,222,128,0.06)" : "#f0fdf4",
+    sciMethodBorder: dark ? "rgba(74,222,128,0.12)" : "#dcfce7",
+    sciMethodColor: dark ? "#4ade80" : "#16a34a",
+    altBg: dark ? "rgba(74,222,128,0.04)" : "#f2faf2",
+    altBorder: dark ? "rgba(74,222,128,0.12)" : "#dcf5dc",
+    altScoreColor: dark ? "#4ade80" : "#16a34a",
+    btnPrimaryBg: dark ? "linear-gradient(135deg,#166534,#14532d)" : "linear-gradient(135deg,#16a34a,#15803d)",
+    btnPrimaryColor: dark ? "#4ade80" : "#ffffff",
+    btnSecBg: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
+    btnSecBorder: dark ? "rgba(255,255,255,0.1)" : "#e2e8e0",
+    btnSecColor: dark ? "#ffffff" : "#1a2e1a",
+    chemSweatBg: dark ? "rgba(201,168,76,0.08)" : "rgba(202,138,4,0.06)",
+    chemSweatColor: dark ? "#c9a84c" : "#92400e",
+    studyBg: dark ? "rgba(255,255,255,0.02)" : "#f8faf8",
+    iarcKeyBg: dark ? "rgba(255,255,255,0.02)" : "#f6f9f4",
+  };
 }
 
 function gutPunch(score, r) {
@@ -146,6 +184,7 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
   const sc = scoreColor(ov);
   const gp = gutPunch(ov, R);
   const foodEq = getFoodEquivs(ov, cIds, R.materials);
+  const T = getTheme(ov);
 
   // Collect studies
   const sIds = new Set();
@@ -154,22 +193,22 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
   ["dermal_benzothiazole", "humidity_absorption", "flame_retardant_urine", "sweat_leaching"].forEach(s => sIds.add(s));
   const studies = [...sIds].map(id => STUDIES[id]).filter(Boolean);
 
-  const bx = { background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 20, padding: 24, marginBottom: 24 };
-  const hd = { fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 800, margin: "0 0 4px 0", color: "#fff" };
-  const sb = { fontSize: 13, color: "#71717a", margin: "0 0 20px 0", lineHeight: 1.5 };
+  const bx = { background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 20, padding: 24, marginBottom: 24, boxShadow: T.dark ? "none" : "0 1px 3px rgba(0,0,0,0.04)" };
+  const hd = { fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 800, margin: "0 0 4px 0", color: T.heading };
+  const sb = { fontSize: 13, color: T.textMuted, margin: "0 0 20px 0", lineHeight: 1.5 };
 
   return (
-    <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", background: "#030a03", color: "#e8e8e8", minHeight: "100vh", width: "100%", margin: "0 auto", position: "relative", overflow: "hidden" }}>
+    <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh", width: "100%", margin: "0 auto", position: "relative", overflow: "hidden" }}>
       <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
       {/* ═══ LAYER 1: THE SCREENSHOT ═══ */}
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", position: "relative", background: "#030a03" }}>
-        <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse at 50% 20%, ${sc.glow} 0%, rgba(3,10,3,0) 70%)`, pointerEvents: "none" }} />
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", position: "relative", background: T.bg }}>
+        <div style={{ position: "absolute", inset: 0, background: T.dark ? `radial-gradient(ellipse at 50% 20%, ${sc.glow} 0%, rgba(3,10,3,0) 70%)` : `radial-gradient(ellipse at 50% 20%, ${sc.glow} 0%, transparent 70%)`, pointerEvents: "none" }} />
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", position: "relative", zIndex: 2 }}>
-          <button onClick={onBack} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#a1a1aa", borderRadius: 12, padding: "8px 16px", cursor: "pointer", fontSize: 14, fontFamily: "inherit" }}>← Back</button>
+          <button onClick={onBack} style={{ background: T.backBtnBg, border: `1px solid ${T.backBtnBorder}`, color: T.backBtnColor, borderRadius: 12, padding: "8px 16px", cursor: "pointer", fontSize: 14, fontFamily: "inherit", boxShadow: T.dark ? "none" : "0 1px 3px rgba(0,0,0,0.04)" }}>← Back</button>
           <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 700, letterSpacing: 1 }}>
-            <span style={{ color: "#fff" }}>Clean</span><span style={{ color: "#4ade80", fontStyle: "italic" }}>Wear</span>
+            <span style={{ color: T.heading }}>Clean</span><span style={{ color: T.dark ? "#4ade80" : "#16a34a", fontStyle: "italic" }}>Wear</span>
           </div>
         </div>
 
@@ -181,37 +220,37 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
               <circle cx="90" cy="90" r="80" fill="none" stroke={sc.text} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(ov / 100) * 502.65} 502.65`} transform="rotate(-90 90 90)" style={{ filter: `drop-shadow(0 0 14px ${sc.text}50)`, transition: "stroke-dasharray 1.2s cubic-bezier(0.16,1,0.3,1)" }} />
             </svg>
             <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
-              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 64, fontWeight: 900, color: sc.text, lineHeight: 1, textShadow: `0 0 40px ${sc.text}30` }}>{ov}</div>
-              <div style={{ fontSize: 11, letterSpacing: 2, color: "#71717a", marginTop: 2, textTransform: "uppercase" }}>out of 100</div>
+              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 64, fontWeight: 900, color: sc.text, lineHeight: 1, textShadow: T.dark ? `0 0 40px ${sc.text}30` : "none" }}>{ov}</div>
+              <div style={{ fontSize: 11, letterSpacing: 2, color: T.textMuted, marginTop: 2, textTransform: "uppercase" }}>out of 100</div>
             </div>
           </div>
 
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: `${sc.text}15`, border: `1px solid ${sc.text}30`, borderRadius: 100, padding: "8px 24px", marginBottom: 20 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: `${sc.text}${T.dark ? "15" : "10"}`, border: `1px solid ${sc.text}30`, borderRadius: 100, padding: "8px 24px", marginBottom: 20 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: sc.text, boxShadow: `0 0 8px ${sc.text}`, animation: ov < 40 ? "cwp 2s infinite" : "none" }} />
             <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 800, color: sc.text, letterSpacing: 3, textTransform: "uppercase" }}>{sc.label}</span>
           </div>
 
-          <p style={{ fontSize: 17, lineHeight: 1.6, textAlign: "center", color: "#d4d4d8", maxWidth: 380, margin: "0 0 28px 0", fontWeight: 500, opacity: mounted ? 1 : 0, transform: mounted ? "translateY(0)" : "translateY(12px)", transition: "all 0.8s cubic-bezier(0.16,1,0.3,1) 0.3s" }}>{gp}</p>
+          <p style={{ fontSize: 17, lineHeight: 1.6, textAlign: "center", color: T.textSub, maxWidth: 380, margin: "0 0 28px 0", fontWeight: 500, opacity: mounted ? 1 : 0, transform: mounted ? "translateY(0)" : "translateY(12px)", transition: "all 0.8s cubic-bezier(0.16,1,0.3,1) 0.3s" }}>{gp}</p>
 
           <div style={{ textAlign: "center", opacity: mounted ? 1 : 0, transform: mounted ? "translateY(0)" : "translateY(12px)", transition: "all 0.8s cubic-bezier(0.16,1,0.3,1) 0.5s" }}>
-            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Playfair Display',serif", color: "#fff", marginBottom: 4 }}>{R.product_name}</div>
-            <div style={{ fontSize: 14, color: "#71717a", letterSpacing: 1 }}>{R.brand?.toUpperCase()} · {R.category}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Playfair Display',serif", color: T.heading, marginBottom: 4 }}>{R.product_name}</div>
+            <div style={{ fontSize: 14, color: T.textMuted, letterSpacing: 1 }}>{R.brand?.toUpperCase()} · {R.category}</div>
             {R.materials?.length > 0 && (
               <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginTop: 12 }}>
                 {R.materials.map((m, i) => {
                   const nm = typeof m === "string" ? m : `${m.name}${m.percentage ? " " + m.percentage + "%" : ""}`;
-                  return <span key={i} style={{ fontSize: 12, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "4px 12px", color: "#a1a1aa" }}>{nm}</span>;
+                  return <span key={i} style={{ fontSize: 12, background: T.tagBg, border: `1px solid ${T.tagBorder}`, borderRadius: 8, padding: "4px 12px", color: T.tagColor }}>{nm}</span>;
                 })}
               </div>
             )}
           </div>
 
           <div style={{ marginTop: "auto", paddingBottom: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, opacity: 0.4, animation: "cwb 2s ease-in-out infinite" }}>
-            <span style={{ fontSize: 11, letterSpacing: 2, color: "#71717a", textTransform: "uppercase" }}>Scroll for details</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" strokeWidth="2"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
+            <span style={{ fontSize: 11, letterSpacing: 2, color: T.textMuted, textTransform: "uppercase" }}>Scroll for details</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="2"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
           </div>
         </div>
-        <div style={{ position: "absolute", bottom: 8, left: 0, right: 0, textAlign: "center", fontSize: 9, color: "#52525b", letterSpacing: 0.5, padding: "0 24px", zIndex: 3 }}>Estimates based on material composition analysis · Not a lab test result</div>
+        <div style={{ position: "absolute", bottom: 8, left: 0, right: 0, textAlign: "center", fontSize: 9, color: T.textFaint, letterSpacing: 0.5, padding: "0 24px", zIndex: 3 }}>Estimates based on material composition analysis · Not a lab test result</div>
       </div>
 
       {/* ═══ LAYER 2: THE SCROLL ═══ */}
@@ -227,15 +266,15 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
                   <span style={{ fontSize: 28, lineHeight: 1 }}>{eq.icon}</span>
                   <div>
-                    <div style={{ fontSize: 12, color: "#71717a", letterSpacing: 0.5, marginBottom: 4, textTransform: "uppercase" }}>{eq.headline}</div>
+                    <div style={{ fontSize: 12, color: T.textMuted, letterSpacing: 0.5, marginBottom: 4, textTransform: "uppercase" }}>{eq.headline}</div>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
                       <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 36, fontWeight: 900, color: eq.color, lineHeight: 1 }}>{eq.stat}</span>
-                      <span style={{ fontSize: 16, fontWeight: 600, color: "#d4d4d8", lineHeight: 1.3 }}>{eq.unit}</span>
+                      <span style={{ fontSize: 16, fontWeight: 600, color: T.text, lineHeight: 1.3 }}>{eq.unit}</span>
                     </div>
                   </div>
                 </div>
-                <p style={{ fontSize: 13, color: "#a1a1aa", margin: "0 0 8px 0", lineHeight: 1.6 }}>{eq.desc}</p>
-                <p style={{ fontSize: 10, color: "#52525b", margin: 0, fontStyle: "italic" }}>Estimate · {eq.src}</p>
+                <p style={{ fontSize: 13, color: T.textSub, margin: "0 0 8px 0", lineHeight: 1.6 }}>{eq.desc}</p>
+                <p style={{ fontSize: 10, color: T.textFaint, margin: 0, fontStyle: "italic" }}>Estimate · {eq.src}</p>
               </div>
             ))}
           </div>
@@ -248,17 +287,17 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
             <p style={sb}>Based on material composition and manufacturing analysis.</p>
             {chems.slice(0, 4).map((ch, i) => {
               const ex = expChem === i;
-              return <div key={i} onClick={() => setExpChem(ex ? null : i)} style={{ background: "rgba(255,255,255,0.02)", border: `1px solid ${ex ? ch.color + "40" : "rgba(255,255,255,0.06)"}`, borderRadius: 16, padding: 18, marginBottom: i < chems.length - 1 ? 12 : 0, cursor: "pointer", transition: "border-color 0.3s" }}>
+              return <div key={i} onClick={() => setExpChem(ex ? null : i)} style={{ background: T.studyBg, border: `1px solid ${ex ? ch.color + "40" : "rgba(255,255,255,0.06)"}`, borderRadius: 16, padding: 18, marginBottom: i < chems.length - 1 ? 12 : 0, cursor: "pointer", transition: "border-color 0.3s" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                  <div><div style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>{ch.icon} {ch.name}</div><div style={{ fontSize: 13, color: "#a1a1aa", marginTop: 2 }}>{ch.plain}</div></div>
+                  <div><div style={{ fontSize: 16, fontWeight: 700, color: T.heading }}>{ch.icon} {ch.name}</div><div style={{ fontSize: 13, color: T.textSub, marginTop: 2 }}>{ch.plain}</div></div>
                   <span style={{ fontSize: 10, fontWeight: 700, color: ch.color, background: `${ch.color}15`, border: `1px solid ${ch.color}30`, borderRadius: 8, padding: "3px 8px", whiteSpace: "nowrap", letterSpacing: 0.5 }}>{ch.group}</span>
                 </div>
-                <div style={{ fontSize: 12, color: "#71717a", marginBottom: 8, fontStyle: "italic" }}>{ch.groupLabel}</div>
-                <div style={{ fontSize: 12, color: "#c9a84c", background: "rgba(201,168,76,0.08)", borderRadius: 10, padding: "8px 12px", lineHeight: 1.5 }}>💧 <strong>Sweat factor:</strong> {ch.sweat}</div>
+                <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 8, fontStyle: "italic" }}>{ch.groupLabel}</div>
+                <div style={{ fontSize: 12, color: T.chemSweatColor, background: T.chemSweatBg, borderRadius: 10, padding: "8px 12px", lineHeight: 1.5 }}>💧 <strong>Sweat factor:</strong> {ch.sweat}</div>
                 {ex && ch.studies && (
                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: "#71717a", marginBottom: 8, letterSpacing: 0.5, textTransform: "uppercase" }}>Supporting research</div>
-                    {ch.studies.map(sid => { const st = STUDIES[sid]; if (!st) return null; return <div key={sid} style={{ marginBottom: 8 }}><div style={{ fontSize: 12, fontWeight: 600, color: "#d4d4d8" }}>{st.title}</div><div style={{ fontSize: 10, color: "#71717a" }}>{st.authors} · <em>{st.journal}</em> ({st.year})</div></div>; })}
+                    <div style={{ fontSize: 11, fontWeight: 600, color: T.textMuted, marginBottom: 8, letterSpacing: 0.5, textTransform: "uppercase" }}>Supporting research</div>
+                    {ch.studies.map(sid => { const st = STUDIES[sid]; if (!st) return null; return <div key={sid} style={{ marginBottom: 8 }}><div style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{st.title}</div><div style={{ fontSize: 10, color: T.textMuted }}>{st.authors} · <em>{st.journal}</em> ({st.year})</div></div>; })}
                   </div>
                 )}
               </div>;
@@ -269,30 +308,30 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
         {/* ═══ LAYER 3: THE SCIENCE ═══ */}
         <div style={{ ...bx, padding: 0, overflow: "hidden" }}>
           <button onClick={() => setSciOpen(!sciOpen)} style={{ width: "100%", padding: "18px 24px", background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "inherit" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ fontSize: 20 }}>🧬</span><span style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 800, color: "#fff" }}>View the Science</span></div>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#71717a" strokeWidth="2" style={{ transform: sciOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.3s" }}><path d="M6 9l6 6 6-6" /></svg>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ fontSize: 20 }}>🧬</span><span style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 800, color: T.heading }}>View the Science</span></div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="2" style={{ transform: sciOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.3s" }}><path d="M6 9l6 6 6-6" /></svg>
           </button>
           {sciOpen && <div style={{ padding: "0 24px 24px" }}>
-            <p style={{ fontSize: 13, color: "#71717a", margin: "0 0 16px 0", lineHeight: 1.5 }}>Every claim traces to peer-reviewed research or government findings. CleanWear scores are risk estimates based on material analysis, not lab tests.</p>
-            <div style={{ background: "rgba(74,222,128,0.06)", borderRadius: 14, padding: 16, marginBottom: 16, border: "1px solid rgba(74,222,128,0.12)" }}>
-              <h4 style={{ fontSize: 14, fontWeight: 700, color: "#4ade80", margin: "0 0 8px 0" }}>Scoring Methodology</h4>
-              <p style={{ fontSize: 12, color: "#a1a1aa", margin: 0, lineHeight: 1.6 }}>Every garment starts at 100. Points deducted via two layers: (1) Chemical Risk Assessment — compounds likely present based on materials, penalties set by authority classifications (IARC, EFSA, NTP). (2) Exposure Pathway Multiplier — how chemicals transfer from fabric to body based on garment type and wear conditions. Certifications (OEKO-TEX, GOTS, bluesign®) remove specific penalties.</p>
+            <p style={{ fontSize: 13, color: T.textMuted, margin: "0 0 16px 0", lineHeight: 1.5 }}>Every claim traces to peer-reviewed research or government findings. CleanWear scores are risk estimates based on material analysis, not lab tests.</p>
+            <div style={{ background: T.sciMethodBg, borderRadius: 14, padding: 16, marginBottom: 16, border: "1px solid " + T.sciMethodBorder }}>
+              <h4 style={{ fontSize: 14, fontWeight: 700, color: T.sciMethodColor, margin: "0 0 8px 0" }}>Scoring Methodology</h4>
+              <p style={{ fontSize: 12, color: T.textSub, margin: 0, lineHeight: 1.6 }}>Every garment starts at 100. Points deducted via two layers: (1) Chemical Risk Assessment — compounds likely present based on materials, penalties set by authority classifications (IARC, EFSA, NTP). (2) Exposure Pathway Multiplier — how chemicals transfer from fabric to body based on garment type and wear conditions. Certifications (OEKO-TEX, GOTS, bluesign®) remove specific penalties.</p>
             </div>
-            <h4 style={{ fontSize: 14, fontWeight: 700, color: "#fff", margin: "0 0 12px 0", letterSpacing: 0.5 }}>Referenced Studies ({studies.length})</h4>
+            <h4 style={{ fontSize: 14, fontWeight: 700, color: T.heading, margin: "0 0 12px 0", letterSpacing: 0.5 }}>Referenced Studies ({studies.length})</h4>
             {studies.map((st, i) => (
-              <div key={i} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 14, marginBottom: 10 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#d4d4d8", marginBottom: 4 }}>{st.title}</div>
-                <div style={{ fontSize: 11, color: "#71717a", marginBottom: 6 }}>{st.authors} · <em>{st.journal}</em> ({st.year})</div>
-                <div style={{ fontSize: 12, color: "#a1a1aa", lineHeight: 1.5, background: "rgba(255,255,255,0.02)", borderRadius: 8, padding: "8px 10px" }}><strong style={{ color: "#c9a84c" }}>Key finding:</strong> {st.finding}</div>
-                {st.doi && !/^(CEH|JRC|UoB|IARC|PMC)/.test(st.doi) && <div style={{ fontSize: 10, color: "#52525b", marginTop: 6 }}>DOI: {st.doi}</div>}
+              <div key={i} style={{ background: T.studyBg, border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 14, marginBottom: 10 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>{st.title}</div>
+                <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 6 }}>{st.authors} · <em>{st.journal}</em> ({st.year})</div>
+                <div style={{ fontSize: 12, color: T.textSub, lineHeight: 1.5, background: T.studyBg, borderRadius: 8, padding: "8px 10px" }}><strong style={{ color: T.chemSweatColor }}>Key finding:</strong> {st.finding}</div>
+                {st.doi && !/^(CEH|JRC|UoB|IARC|PMC)/.test(st.doi) && <div style={{ fontSize: 10, color: T.textFaint, marginTop: 6 }}>DOI: {st.doi}</div>}
               </div>
             ))}
-            <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, padding: 14, marginTop: 8 }}>
-              <h4 style={{ fontSize: 12, fontWeight: 700, color: "#71717a", margin: "0 0 8px 0", letterSpacing: 1, textTransform: "uppercase" }}>IARC Classification Key</h4>
+            <div style={{ background: T.studyBg, borderRadius: 12, padding: 14, marginTop: 8 }}>
+              <h4 style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, margin: "0 0 8px 0", letterSpacing: 1, textTransform: "uppercase" }}>IARC Classification Key</h4>
               {[{ g: "Group 1", c: "#f87171", d: "Carcinogenic to humans (e.g., Formaldehyde)" }, { g: "Group 2A", c: "#fb923c", d: "Probably carcinogenic" }, { g: "Group 2B", c: "#c9a84c", d: "Possibly carcinogenic (e.g., Antimony trioxide)" }].map((cl, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: i < 2 ? 6 : 0 }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: cl.c, background: `${cl.c}15`, borderRadius: 6, padding: "2px 8px", minWidth: 60, textAlign: "center" }}>{cl.g}</span>
-                  <span style={{ fontSize: 12, color: "#a1a1aa" }}>{cl.d}</span>
+                  <span style={{ fontSize: 12, color: T.textSub }}>{cl.d}</span>
                 </div>
               ))}
             </div>
@@ -305,27 +344,27 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
             <h3 style={hd}>Safer Alternatives</h3>
             <p style={sb}>Similar products with lower chemical exposure risk.</p>
             {R.alternatives.map((alt, i) => (
-              <div key={i} onClick={() => onScanAlternative?.(alt.name)} style={{ background: "rgba(74,222,128,0.04)", border: "1px solid rgba(74,222,128,0.12)", borderRadius: 16, padding: 16, marginBottom: i < R.alternatives.length - 1 ? 10 : 0, cursor: onScanAlternative ? "pointer" : "default" }}>
+              <div key={i} onClick={() => onScanAlternative?.(alt.name)} style={{ background: T.altBg, border: `1px solid ${T.altBorder}`, borderRadius: 16, padding: 16, marginBottom: i < R.alternatives.length - 1 ? 10 : 0, cursor: onScanAlternative ? "pointer" : "default" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <div><div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>{alt.name}</div><div style={{ fontSize: 12, color: "#71717a" }}>{alt.brand}</div></div>
-                  {alt.score && <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 900, color: "#4ade80" }}>{alt.score}</div>}
+                  <div><div style={{ fontSize: 15, fontWeight: 700, color: T.heading }}>{alt.name}</div><div style={{ fontSize: 12, color: T.textMuted }}>{alt.brand}</div></div>
+                  {alt.score && <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 900, color: T.altScoreColor }}>{alt.score}</div>}
                 </div>
-                <p style={{ fontSize: 12, color: "#a1a1aa", margin: 0, lineHeight: 1.5 }}>{alt.reason}</p>
+                <p style={{ fontSize: 12, color: T.textSub, margin: 0, lineHeight: 1.5 }}>{alt.reason}</p>
               </div>
             ))}
           </div>
         )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingBottom: 40 }}>
-          <button onClick={onAddToWardrobe} style={{ width: "100%", padding: "18px 24px", background: "linear-gradient(135deg,#166534,#14532d)", border: "1px solid #16653480", borderRadius: 16, cursor: "pointer", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 16, fontWeight: 700, color: "#4ade80", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <button onClick={onAddToWardrobe} style={{ width: "100%", padding: "18px 24px", background: T.btnPrimaryBg, border: "1px solid rgba(22,101,52,0.3)", borderRadius: 16, cursor: "pointer", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 16, fontWeight: 700, color: T.btnPrimaryColor, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>Add to Wardrobe
           </button>
-          <button onClick={onShare} style={{ width: "100%", padding: "18px 24px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, cursor: "pointer", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 16, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <button onClick={onShare} style={{ width: "100%", padding: "18px 24px", background: T.btnSecBg, border: `1px solid ${T.btnSecBorder}`, borderRadius: 16, cursor: "pointer", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 16, fontWeight: 700, color: T.btnSecColor, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: T.dark ? "none" : "0 1px 3px rgba(0,0,0,0.04)" }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" /></svg>Share Results
           </button>
         </div>
 
-        <div style={{ textAlign: "center", padding: "0 12px 24px", fontSize: 10, color: "#3f3f46", lineHeight: 1.6 }}>
+        <div style={{ textAlign: "center", padding: "0 12px 24px", fontSize: 10, color: T.textFaint, lineHeight: 1.6 }}>
           CleanWear provides risk estimates based on publicly available material and chemical research. Scores are not lab test results. All equivalencies are estimates derived from peer-reviewed studies cited above. © 2026 CleanWear.
         </div>
       </div>

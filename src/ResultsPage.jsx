@@ -30,12 +30,12 @@ const STUDIES = {
 // ─── CHEMICAL DATABASE ────────────────────────────────────────
 const CHEM_DB = {
   formaldehyde: { name: "Formaldehyde", plain: "A known human carcinogen used as anti-wrinkle treatment", icon: "⚠️", group: "Group 1", groupLabel: "Carcinogenic to humans", sweat: "Release increases 150–300% in the presence of sweat", studies: ["formaldehyde_iarc", "formaldehyde_sweat", "formaldehyde_melanoma"], color: "#f87171" },
-  antimony: { name: "Antimony Trioxide", plain: "A suspected carcinogen in 85% of polyester", icon: "☢️", group: "Group 2B", groupLabel: "Possibly carcinogenic to humans", sweat: "Body heat and acidic sweat accelerate leaching from polyester", studies: ["antimony_sweat", "antimony_iarc"], color: T.chemSweatColor },
+  antimony: { name: "Antimony Trioxide", plain: "A suspected carcinogen in 85% of polyester", icon: "☢️", group: "Group 2B", groupLabel: "Possibly carcinogenic to humans", sweat: "Body heat and acidic sweat accelerate leaching from polyester", studies: ["antimony_sweat", "antimony_iarc"], color: "#b45309" },
   bpa: { name: "Bisphenol A (BPA)", plain: "A hormone disruptor at dangerous levels in activewear", icon: "🧬", group: "Endocrine Disruptor", groupLabel: "Mimics estrogen in the human body", sweat: "Sweat-soaked polyester exceeds safe daily BPA intake by 125–570×", studies: ["bpa_clothing", "bpa_sweat_tdi"], color: "#a78bfa" },
   pfas: { name: "PFAS (Forever Chemicals)", plain: "Indestructible chemicals in water-repellent clothing", icon: "♾️", group: "Group 2B", groupLabel: "Possibly carcinogenic (PFOA)", sweat: "Never breaks down — accumulates in your body over a lifetime", studies: ["sweat_leaching"], color: "#f87171" },
-  phthalates: { name: "Phthalates", plain: "Plasticizers that disrupt hormones", icon: "⚠️", group: "Endocrine Disruptor", groupLabel: "Linked to reduced testosterone and fertility", sweat: "Leach from plastisol prints and stretchy synthetic fabrics", studies: ["sweat_leaching"], color: T.chemSweatColor },
+  phthalates: { name: "Phthalates", plain: "Plasticizers that disrupt hormones", icon: "⚠️", group: "Endocrine Disruptor", groupLabel: "Linked to reduced testosterone and fertility", sweat: "Leach from plastisol prints and stretchy synthetic fabrics", studies: ["sweat_leaching"], color: "#b45309" },
   azo_dyes: { name: "Azo Dyes", plain: "Textile dyes that release carcinogenic compounds", icon: "🎨", group: "Group 1 (amines)", groupLabel: "Some breakdown products confirmed carcinogens", sweat: "Sweat and friction release carcinogenic aromatic amines", studies: ["sweat_leaching"], color: "#f87171" },
-  microplastics: { name: "Microplastic Shedding", plain: "Microscopic plastic entering your bloodstream", icon: "🔬", group: "Emerging Concern", groupLabel: "Found in 80% of human blood samples tested", sweat: "Synthetics shed thousands of fibers per wear absorbed through skin", studies: ["microplastic_shedding", "microplastic_ingestion"], color: T.chemSweatColor },
+  microplastics: { name: "Microplastic Shedding", plain: "Microscopic plastic entering your bloodstream", icon: "🔬", group: "Emerging Concern", groupLabel: "Found in 80% of human blood samples tested", sweat: "Synthetics shed thousands of fibers per wear absorbed through skin", studies: ["microplastic_shedding", "microplastic_ingestion"], color: "#b45309" },
   heavy_metals: { name: "Heavy Metals in Dyes", plain: "Lead, chromium, cadmium from textile dyes", icon: "🔬", group: "Group 1/2A", groupLabel: "Multiple confirmed or probable carcinogens", sweat: "Acidic sweat dissolves heavy metal residues from dyes", studies: ["sweat_leaching"], color: "#f87171" },
 };
 
@@ -53,7 +53,7 @@ function getFoodEquivs(score, chemIds, materials) {
       stat: "4–6", unit: "hot plastic bottles daily",
       desc: "Your polyester shirt uses the same antimony catalyst as plastic water bottles. Sweat accelerates the leaching — just like heat with bottled water.",
       src: "Biver et al., Reg. Tox. Pharm., 2021 · Westerhoff et al., Water Research, 2008",
-      sids: ["antimony_sweat", "antimony_bottles"], color: T.chemSweatColor,
+      sids: ["antimony_sweat", "antimony_bottles"], color: "#b45309",
     });
   }
   if (chemIds.includes("bpa") && (hasPoly || hasSpan)) {
@@ -71,7 +71,7 @@ function getFoodEquivs(score, chemIds, materials) {
       stat: "~1", unit: "grocery bag of plastic per year",
       desc: "Synthetic fabrics shed thousands of microplastic fibers per wear. Combined with food and water sources, textile-derived microplastics are a major exposure route.",
       src: "Mitrano et al., Env. Sci. Tech., 2017 · Cox et al., Env. Sci. Tech., 2019",
-      sids: ["microplastic_shedding", "microplastic_ingestion"], color: T.chemSweatColor,
+      sids: ["microplastic_shedding", "microplastic_ingestion"], color: "#b45309",
     });
   }
   if (equivs.length === 0 && score < 70) {
@@ -80,7 +80,7 @@ function getFoodEquivs(score, chemIds, materials) {
       stat: "5×", unit: "when your skin is moist",
       desc: "Dermal absorption jumps from 13% to 63% as humidity rises. Every workout in this garment amplifies chemical transfer into your body.",
       src: "Kezic & Nielsen, Int. Arch. Occup. Env. Health, 2009",
-      sids: ["humidity_absorption"], color: T.chemSweatColor,
+      sids: ["humidity_absorption"], color: "#b45309",
     });
   }
   return equivs;
@@ -293,7 +293,7 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
                   <span style={{ fontSize: 10, fontWeight: 700, color: ch.color, background: `${ch.color}15`, border: `1px solid ${ch.color}30`, borderRadius: 8, padding: "3px 8px", whiteSpace: "nowrap", letterSpacing: 0.5 }}>{ch.group}</span>
                 </div>
                 <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 8, fontStyle: "italic" }}>{ch.groupLabel}</div>
-                <div style={{ fontSize: 12, color: T.chemSweatColor, background: T.chemSweatBg, borderRadius: 10, padding: "8px 12px", lineHeight: 1.5 }}>💧 <strong>Sweat factor:</strong> {ch.sweat}</div>
+                <div style={{ fontSize: 12, color: "#b45309", background: T.chemSweatBg, borderRadius: 10, padding: "8px 12px", lineHeight: 1.5 }}>💧 <strong>Sweat factor:</strong> {ch.sweat}</div>
                 {ex && ch.studies && (
                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: T.textMuted, marginBottom: 8, letterSpacing: 0.5, textTransform: "uppercase" }}>Supporting research</div>
@@ -322,7 +322,7 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
               <div key={i} style={{ background: T.studyBg, border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 14, marginBottom: 10 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>{st.title}</div>
                 <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 6 }}>{st.authors} · <em>{st.journal}</em> ({st.year})</div>
-                <div style={{ fontSize: 12, color: T.textSub, lineHeight: 1.5, background: T.studyBg, borderRadius: 8, padding: "8px 10px" }}><strong style={{ color: T.chemSweatColor }}>Key finding:</strong> {st.finding}</div>
+                <div style={{ fontSize: 12, color: T.textSub, lineHeight: 1.5, background: T.studyBg, borderRadius: 8, padding: "8px 10px" }}><strong style={{ color: "#b45309" }}>Key finding:</strong> {st.finding}</div>
                 {st.doi && !/^(CEH|JRC|UoB|IARC|PMC)/.test(st.doi) && <div style={{ fontSize: 10, color: T.textFaint, marginTop: 6 }}>DOI: {st.doi}</div>}
               </div>
             ))}

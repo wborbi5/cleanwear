@@ -159,7 +159,7 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
   const sb = { fontSize: 13, color: "#71717a", margin: "0 0 20px 0", lineHeight: 1.5 };
 
   return (
-    <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", background: "#030a03", color: "#e8e8e8", minHeight: "100vh", maxWidth: 480, margin: "0 auto", position: "relative", overflow: "hidden" }}>
+    <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", background: "#030a03", color: "#e8e8e8", minHeight: "100vh", width: "100%", margin: "0 auto", position: "relative", overflow: "hidden" }}>
       <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
       {/* ═══ LAYER 1: THE SCREENSHOT ═══ */}
@@ -215,7 +215,7 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
       </div>
 
       {/* ═══ LAYER 2: THE SCROLL ═══ */}
-      <div style={{ padding: "40px 20px 20px" }}>
+      <div style={{ padding: "40px 20px 20px", maxWidth: 800, margin: "0 auto" }}>
 
         {/* FOOD EQUIVALENCIES */}
         {foodEq.length > 0 && (

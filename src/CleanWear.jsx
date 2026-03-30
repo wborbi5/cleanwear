@@ -260,6 +260,16 @@ export default function CleanWearApp() {
   // Push history on initial load
   useEffect(() => { window.history.replaceState({ view: "scanner" }, ""); }, []);
 
+  // Sync body background with dark/light results theme
+  useEffect(() => {
+    const body = document.getElementById("cw-body") || document.body;
+    if (view === "results" && score && score.overall < 50) {
+      body.style.background = "#030a03";
+    } else {
+      body.style.background = "#fafaf7";
+    }
+  }, [view, score]);
+
   const navigateToResults = useCallback(() => { window.history.pushState({ view: "results" }, ""); setView("results"); }, []);
 
   const navigateTo = useCallback((newView) => { if (newView !== view) { window.history.pushState({ view: newView }, ""); setView(newView); setExpanded(null); } }, [view]);
@@ -384,7 +394,28 @@ export default function CleanWearApp() {
     return (<><div className="w-hero"><h1 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 700, marginBottom: 20 }}>My Wardrobe</h1>{wardrobe.length > 0 && (<><div className="w-agg" style={{ borderColor: sc(avg) }}><div className="w-an" style={{ color: sc(avg) }}>{avg}</div><div className="w-al">Avg Score</div></div><p style={{ fontSize: 13, color: "var(--tx3)" }}>{wardrobe.length} item{wardrobe.length !== 1 ? "s" : ""} {"\u00b7"} {sg(avg)} overall</p></>)}</div>{!wardrobe.length ? <div className="w-empty"><div style={{ fontSize: 44, marginBottom: 16, opacity: .4 }}>{"\ud83d\udc55"}</div><p style={{ fontSize: 15, marginBottom: 8, fontWeight: 500 }}>Your wardrobe is empty</p><p style={{ fontSize: 13 }}>Scan items to build your health profile.</p></div> : (<><div style={{ padding: "0 24px", marginBottom: 16 }}><div style={{ fontSize: 10, fontWeight: 700, color: "var(--tx4)", marginBottom: 8, letterSpacing: "1.5px", textTransform: "uppercase" }}>This Week</div><div className="streak">{["M","T","W","T","F","S","S"].map((d, i) => { const h = wardrobe.some(w => new Date(w.at).getDay() === (i + 1) % 7); return <div key={i} className="streak-d" style={{ background: h ? "var(--s2)" : "var(--s1)", color: h ? "var(--g6)" : "var(--tx4)", border: `1px solid ${h ? "var(--g8)" : "var(--bd)"}` }}>{d}</div>; })}</div></div>{wardrobe.map(w => (<div key={w.id} className="w-item" onClick={() => { setQuery(`${w.brand} ${w.name}`); scanSourceRef.current = "wardrobe_rescan"; doScan(`${w.brand} ${w.name}`); }}><div className="w-is" style={{ background: `${sc(w.score)}14`, color: sc(w.score), border: `1px solid ${sc(w.score)}33` }}>{w.score}</div><div className="w-ii"><div className="w-in">{w.name}</div><div className="w-ib">{w.brand} {"\u00b7"} {w.category}</div></div><button className="w-ir" onClick={e => { e.stopPropagation(); rmWard(w.id); }}>{"\u2715"}</button></div>))}</>)}</>);
   };
 
-  const renderBrands = () => (<BrandExplore onScanProduct={(productQuery) => { setQuery(productQuery); scanSourceRef.current = "brand_browse"; doScan(productQuery); }} />);
+  const doScanDirect = useCallback((product) => {
+    setLoading(true); setError(null); setAdded(false);
+    analytics.trackScanStarted(product.name, false, "brand_browse_direct");
+    const pd = {
+      product_name: product.name,
+      brand: product.brand,
+      category: product.category,
+      materials: product.materials,
+      chemicals: product.chemicals || [],
+      certifications: product.certifications || [],
+      origin: product.origin || "Unknown",
+    };
+    setResult(pd);
+    const sc2 = calculateScore(pd);
+    setScore(sc2);
+    navigateToResults();
+    analytics.trackScanCompleted(product.name, sc2.overall, pd.brand, pd.product_name, pd.category);
+    logScan({ query: product.name, score: sc2.overall, brand: pd.brand, product: pd.product_name, category: pd.category });
+    setLoading(false); setLoadStep("");
+  }, [navigateToResults]);
+
+  const renderBrands = () => (<BrandExplore onScanProduct={(productQuery) => { setQuery(productQuery); scanSourceRef.current = "brand_browse"; doScan(productQuery); }} onScanProductDirect={(product) => { scanSourceRef.current = "brand_browse"; doScanDirect(product); }} />);
 
   const renderLearn = () => (<div className="lrn"><h2 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 700, marginBottom: 24 }}>Learn</h2><div className="lrn-c" style={{ borderLeft: "2px solid var(--g5)" }}><h3>Weekly Digest</h3>{wardrobe.length > 0 ? (<><div className="ds"><div className="ds-n" style={{ color: sc(avg) }}>{avg}</div><div className="ds-l">Average wardrobe safety score</div></div><div className="ds"><div className="ds-n">{wardrobe.length}</div><div className="ds-l">Items scanned</div></div><div className="ds"><div className="ds-n" style={{ color: "var(--r4)" }}>{wardrobe.filter(w => w.score < 40).length}</div><div className="ds-l">High-risk items</div></div><div className="ds"><div className="ds-n" style={{ color: "var(--g6)" }}>{wardrobe.filter(w => w.score >= 70).length}</div><div className="ds-l">Safe items</div></div><p style={{ fontSize: 13, color: "var(--tx4)", marginTop: 14, lineHeight: 1.6 }}>Replace your highest-contact, lowest-score items first — underwear and gym shirts create the most chemical exposure.</p></>) : <p>Scan items to get your personalized weekly digest.</p>}</div><div className="lrn-c"><h3>Chemical Reference</h3><p style={{ marginBottom: 4 }}>Tap to expand.</p>{Object.entries(CHEMICAL_RISKS).map(([k, c]) => (<div key={k} style={{ padding: "14px 0", borderBottom: "1px solid var(--bd)", cursor: "pointer" }} onClick={() => { const next = expanded === k ? null : k; setExpanded(next); if (next) analytics.trackChemicalReferenceExpanded(c.name); }}><div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 16 }}>{c.icon}</span><span style={{ fontWeight: 600, fontSize: 13 }}>{c.name}</span>{c.cancerLinked && <span style={{ fontSize: 9, color: "var(--r4)", fontWeight: 800, background: "rgba(248,113,113,.1)", padding: "2px 8px", borderRadius: 4, letterSpacing: ".5px" }}>CARCINOGEN</span>}</div>{expanded === k && <div style={{ marginTop: 10, fontSize: 13, color: "var(--tx3)", lineHeight: 1.6 }}>{c.desc}<div style={{ marginTop: 6, fontSize: 12, color: "var(--tx4)", fontStyle: "italic" }}>{"\u23f1"} {c.timeline}</div></div>}</div>))}</div><div className="lrn-c"><h3>Material Rankings</h3><p style={{ marginBottom: 14 }}>Safest to most concerning:</p>{Object.entries(MATERIAL_DB).sort((a, b) => b[1].score - a[1].score).slice(0, 10).map(([n, d], i) => (<div key={n} style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 0", borderBottom: "1px solid var(--bd)" }}><div style={{ fontFamily: "var(--serif)", fontWeight: 800, fontSize: 16, color: "var(--tx4)", minWidth: 24 }}>{i + 1}</div><div style={{ flex: 1, textTransform: "capitalize", fontSize: 13, fontWeight: 600 }}>{n}</div><div style={{ fontFamily: "var(--serif)", fontWeight: 700, color: sc(d.score) }}>{d.score}</div></div>))}</div><div className="lrn-c"><h3>Research Library</h3>{FUN_FACTS.map((f, i) => (<div key={i} style={{ padding: "14px 0", borderBottom: i < FUN_FACTS.length - 1 ? "1px solid var(--bd)" : "none" }}><div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}><span style={{ fontSize: 20, minWidth: 28 }}>{f.icon}</span><div><div style={{ fontSize: 14, lineHeight: 1.6 }}>{f.fact}</div><div style={{ fontSize: 11, color: "var(--tx4)", marginTop: 6, fontStyle: "italic" }}>{f.source}</div></div></div></div>))}</div></div>);
 

@@ -5,7 +5,7 @@ import { PRODUCTS, PRODUCT_CATEGORIES } from "./productDatabase.js";
 function sc(s) { if (s >= 75) return "#16a34a"; if (s >= 60) return "#65a30d"; if (s >= 45) return "#ca8a04"; if (s >= 30) return "#ea580c"; return "#dc2626"; }
 function tierOf(s) { return s >= 70 ? "safe" : s >= 45 ? "moderate" : "high_risk"; }
 
-export default function BrandExplore({ onScanProduct }) {
+export default function BrandExplore({ onScanProduct, onScanProductDirect }) {
   const [search, setSearch] = useState("");
   const [tierFilter, setTierFilter] = useState("all");
   const [catFilter, setCatFilter] = useState("all");
@@ -20,7 +20,7 @@ export default function BrandExplore({ onScanProduct }) {
       const matchSearch = !search ||
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         p.brand.toLowerCase().includes(search.toLowerCase()) ||
-        (p.materials || "").toLowerCase().includes(search.toLowerCase());
+        (p.materialsDisplay || "").toLowerCase().includes(search.toLowerCase());
       return matchTier && matchCat && matchSearch;
     }).sort((a, b) => b.score - a.score);
   }, [search, tierFilter, catFilter]);
@@ -108,7 +108,11 @@ export default function BrandExplore({ onScanProduct }) {
             <div key={cat} style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, color: "var(--tx4)", fontWeight: 600, letterSpacing: .5, marginBottom: 8, textTransform: "uppercase" }}>{cat}</div>
               {products.map((p, i) => (
-                <div key={i} onClick={() => onScanProduct(b.name + " " + p.name)} style={{
+                <div key={i} onClick={() => {
+                  const fullProduct = PRODUCTS.find(fp => fp.brand.toLowerCase() === b.name.toLowerCase() && fp.name === p.name);
+                  if (fullProduct && onScanProductDirect) onScanProductDirect(fullProduct);
+                  else onScanProduct(b.name + " " + p.name);
+                }} style={{
                   display: "flex", alignItems: "center", gap: 12, padding: "14px 16px",
                   background: "var(--s1)", border: "1px solid var(--bd)", borderRadius: 14,
                   marginBottom: 8, cursor: "pointer", transition: "all .2s"
@@ -226,7 +230,10 @@ export default function BrandExplore({ onScanProduct }) {
       {mode === "products" && (
         <div style={{ padding: "8px 24px", display: "flex", flexDirection: "column", gap: 6 }}>
           {filteredProducts.slice(0, 100).map(p => (
-            <div key={p.id} onClick={() => onScanProduct(p.name)} style={{
+            <div key={p.id} onClick={() => {
+              if (onScanProductDirect) onScanProductDirect(p);
+              else onScanProduct(p.name);
+            }} style={{
               display: "flex", alignItems: "center", gap: 12, padding: "14px 16px",
               background: "var(--s1)", border: "1px solid var(--bd)", borderRadius: 14,
               cursor: "pointer", transition: "all .2s"
@@ -239,7 +246,7 @@ export default function BrandExplore({ onScanProduct }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
                 <div style={{ fontSize: 11, color: "var(--tx4)", marginTop: 2 }}>
-                  {p.brand} &#183; {p.category}{p.materials ? " &#183; " + p.materials.split(",")[0].trim() : ""}
+                  {p.brand} &#183; {p.category}{p.materialsDisplay ? " &#183; " + p.materialsDisplay.split(",")[0].trim() : ""}
                 </div>
               </div>
               <div style={{ fontSize: 12, color: "var(--tx4)" }}>&#8594;</div>

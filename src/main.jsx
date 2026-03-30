@@ -23,7 +23,7 @@ function Root() {
 
   if (view === 'auth-callback') return <AuthCallback />;
   if (view === 'app') return <CleanWearApp />;
-  return <LandingPage />;
+  return <LandingPage onLaunchApp={() => { window.location.hash = '#app'; }} />;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(

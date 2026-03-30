@@ -1,9 +1,11 @@
 // ============================================================
 // CleanWear Product Database — Generated from Brand Data
-// Real products with accurate materials, chemicals, and scores
+// 1,641 products across 103 brands
+// Updated: 2026-03-30 (+1,000 new pre-screen items)
 // ============================================================
 
 import { BRANDS } from "./brandDatabase.js";
+import NEW_PRODUCTS_RAW from "./newProducts.json";
 
 // ── Chemical derivation from material composition ───────────
 function deriveChemicals(materials, certs = []) {
@@ -510,6 +512,42 @@ function guessMaterials(brand, product) {
   }
   return [{ name: "Polyester", percentage: 60 }, { name: "Cotton", percentage: 40 }];
 }
+
+// ── Parse string materials into [{name, percentage}] format ──
+function parseMaterialsString(matStr) {
+  if (!matStr || typeof matStr !== "string") return [{ name: "Unknown", percentage: 100 }];
+  const parts = matStr.split(",").map(s => s.trim()).filter(Boolean);
+  const count = parts.length;
+  if (count === 1) return [{ name: parts[0], percentage: 100 }];
+  if (count === 2) return [{ name: parts[0], percentage: 80 }, { name: parts[1], percentage: 20 }];
+  if (count === 3) return [{ name: parts[0], percentage: 60 }, { name: parts[1], percentage: 25 }, { name: parts[2], percentage: 15 }];
+  // 4+
+  const each = Math.floor(100 / count);
+  return parts.map((p, i) => ({ name: p, percentage: i === 0 ? 100 - each * (count - 1) : each }));
+}
+
+// ── Append 1,000 new pre-screened products ──────────────────
+const newProducts = NEW_PRODUCTS_RAW.map(p => {
+  const materials = parseMaterialsString(p.materials);
+  const chemicals = deriveChemicals(materials, []);
+  // Also include any chemicals from the raw data
+  (p.chemicals || []).forEach(c => { if (!chemicals.includes(c)) chemicals.push(c); });
+  return {
+    id: p.id,
+    brand: p.brand,
+    name: p.name,
+    category: p.category,
+    score: p.score,
+    materials,
+    chemicals,
+    certifications: [],
+    origin: "Unknown",
+    tier: p.tier,
+    materialsDisplay: p.materials || materials.map(m => m.name).join(", "),
+  };
+});
+
+PRODUCTS.push(...newProducts);
 
 // ── Exports ─────────────────────────────────────────────────
 export const PRODUCT_BY_ID = Object.fromEntries(PRODUCTS.map(p => [p.id, p]));

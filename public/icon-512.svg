@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="80" fill="#030a03"/>
+  <g transform="translate(128,72) scale(8)">
+    <defs>
+      <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#22c55e"/>
+        <stop offset="100%" stop-color="#166534"/>
+      </linearGradient>
+    </defs>
+    <path d="M16 2 C16 2 4 5 4 14 C4 20.5 8 26 16 30 C24 26 28 20.5 28 14 C28 5 16 2 16 2Z" fill="url(#sg)"/>
+    <path d="M16 10 C16 10 13.5 13 13.5 17 C13.5 19.5 15 21 16 22 C17 21 18.5 19.5 18.5 17 C18.5 13 16 10 16 10Z" fill="#f0fdf4" opacity="0.9"/>
+    <line x1="16" y1="13" x2="16" y2="21" stroke="#166534" stroke-width="0.7" opacity="0.5"/>
+    <line x1="14.5" y1="15.5" x2="16" y2="17" stroke="#166534" stroke-width="0.5" opacity="0.4"/>
+    <line x1="17.5" y1="15.5" x2="16" y2="17" stroke="#166534" stroke-width="0.5" opacity="0.4"/>
+    <line x1="14.2" y1="17.5" x2="16" y2="19" stroke="#166534" stroke-width="0.5" opacity="0.4"/>
+    <line x1="17.8" y1="17.5" x2="16" y2="19" stroke="#166534" stroke-width="0.5" opacity="0.4"/>
+  </g>
+</svg>

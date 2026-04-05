@@ -341,7 +341,7 @@ export default function LandingPage({ onLaunchApp }) {
             fontSize: "clamp(16px, 2.2vw, 20px)", lineHeight: 1.6,
             color: "#666", maxWidth: 480, margin: "0 auto 36px",
           }}>
-            CleanWear scans your clothing and shows you which chemicals are absorbing into your body — so you can find safer alternatives.
+            CleanWear uses published research to show you which chemicals in your clothing may be absorbing into your body — so you can find safer alternatives.
           </p>
           <button onClick={onLaunchApp} style={{
             padding: "16px 40px", background: "#16a34a", color: "#fff",

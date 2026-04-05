@@ -1,100 +1,57 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { BRANDS } from "./brandDatabase.js";
+import { SOURCES, SWEAT_MULTIPLIERS } from "./scoringEngine.js";
 
 // ═══════════════════════════════════════════════════════════════
-// CLEANWEAR RESULTS PAGE — 4-LAYER GUT-PUNCH REDESIGN
-// Layer 1: Viral screenshot (score + scary sentence + product)
-// Layer 2: Body absorption + food equivalencies (ON→IN bridge)
-// Layer 3: Collapsible peer-reviewed science
-// Layer 4: Safer alternatives + wardrobe actions
+// CLEANWEAR RESULTS PAGE v2.0 — Citation-Based Architecture
 // ═══════════════════════════════════════════════════════════════
 
-// ─── STUDY DATABASE ───────────────────────────────────────────
-const STUDIES = {
-  antimony_sweat: { title: "Antimony release from polyester textiles by artificial sweat solutions", authors: "Biver M, Turner A, Filella M", journal: "Regulatory Toxicology and Pharmacology", year: 2021, doi: "10.1016/j.yrtph.2020.104824", finding: "0.05–2% of total antimony mobilized into artificial sweat from polyester. Body heat and acidic sweat increase leaching." },
-  formaldehyde_sweat: { title: "Formaldehyde release from textiles — Sweat survey", authors: "European Commission Joint Research Centre", journal: "JRC Report", year: 2007, doi: "JRC36150", finding: "Formaldehyde release increased 150–300% when tested with sweat simulants vs. standard water extraction." },
-  formaldehyde_iarc: { title: "IARC Monographs Vol 100F — Formaldehyde", authors: "IARC Working Group", journal: "IARC Monographs", year: 2012, doi: "IARC 100F", finding: "Formaldehyde classified Group 1: carcinogenic to humans. Sufficient evidence for nasopharyngeal cancer." },
-  bpa_clothing: { title: "BPA in sports bras, athletic shirts, and socks", authors: "Center for Environmental Health (CEH)", journal: "CEH Investigation", year: 2022, doi: "CEH-2022-BPA", finding: "BPA found at up to 22× California Prop 65 safe limit in sports bras and 31× in socks. Exclusively in polyester/spandex blends." },
-  bpa_sweat_tdi: { title: "Bisphenols in daily clothes: evaluation of dermal exposure", authors: "Multiple authors", journal: "Env. Sci. Pollut. Res.", year: 2024, doi: "PMC11415442", finding: "Sweat-soaked textiles exceeded EFSA tolerable daily intake for BPA by 125–570×." },
-  dermal_benzothiazole: { title: "Chemicals from textiles to skin: permeation study of benzothiazole", authors: "Luongo G, Avagyan R, Fallahi P, Östman C", journal: "Env. Sci. Pollut. Res.", year: 2018, doi: "10.1007/s11356-018-2697-z", finding: "Up to 62% of benzothiazole penetrated through skin-mimicking membrane in 24 hours." },
-  flame_retardant_urine: { title: "Children absorb tris-BP flame retardant from sleepwear", authors: "Blum A, Gold MD, Ames BN et al.", journal: "Science", year: 1978, doi: "10.1126/science.684422", finding: "Flame retardant migrated from sleepwear through skin. Mutagenic metabolite detected in urine." },
-  sweat_leaching: { title: "Sweat leaches chemical additives from microplastics", authors: "Abdallah MA et al., University of Birmingham", journal: "Environment International", year: 2023, doi: "UoB-2023", finding: "Oily substances in sweat dissolve and leach chemical additives from plastic fibers for dermal absorption." },
-  humidity_absorption: { title: "Absorption of chemicals through compromised skin", authors: "Kezic S, Nielsen JB", journal: "Int. Arch. Occup. Env. Health", year: 2009, doi: "10.1007/s00420-009-0405-x", finding: "Dermal absorption increased from 13% to 63% when relative humidity rose from 50% to 90%." },
-  microplastic_shedding: { title: "Polyester textiles as a source of microplastics from households", authors: "Mitrano DM et al.", journal: "Env. Sci. & Technology", year: 2017, doi: "10.1021/acs.est.7b01750", finding: "Polyester releases ~0.025–0.1 mg fibers/g textile per wash. Fleece sheds 7,360 fibers/m²/L." },
-  antimony_iarc: { title: "IARC Monographs Vol 131 — Antimony Compounds", authors: "IARC Working Group", journal: "IARC Monographs", year: 2023, doi: "IARC 131", finding: "Antimony trioxide classified Group 2B: possibly carcinogenic to humans." },
-  formaldehyde_melanoma: { title: "Formaldehyde in simulated sweat increases melanoma cell proliferation", authors: "Piccinini P et al.", journal: "Toxicology In Vitro", year: 2016, doi: "10.1016/j.tiv.2016.09.003", finding: "Formaldehyde below accepted limits, in simulated sweat, increased melanoma cell proliferation." },
-  antimony_bottles: { title: "Antimony leaching from PET bottles into beverages", authors: "Westerhoff P, Prapaipong P, Shock E, Hillaireau A", journal: "Water Research", year: 2008, doi: "10.1016/j.watres.2007.07.048", finding: "Antimony concentrations in bottled water increased with storage time and temperature, from PET bottle material." },
-  bpa_canned_food: { title: "BPA exposure from canned food consumption", authors: "Hartle JC, Navas-Acien A, Lawrence RS", journal: "Environmental Research", year: 2016, doi: "10.1016/j.envres.2016.01.008", finding: "Consuming canned food within 24 hours was associated with higher urinary BPA concentrations." },
-  microplastic_ingestion: { title: "Microplastics in seafood and dietary exposure", authors: "Cox KD, Covernton GA, Davies HL et al.", journal: "Env. Sci. & Technology", year: 2019, doi: "10.1021/acs.est.9b01517", finding: "Estimated humans may consume 39,000–52,000 microplastic particles annually through food alone." },
-};
+// ── Exposure Calculator Options ──────────────────────────────
+const ACTIVITY_OPTIONS = [
+  { value: "casual", label: "Casual wear", multiplier: 1, sweatLevel: "Dry contact" },
+  { value: "workout", label: "Gym / Workout", multiplier: 3252, sweatLevel: "High sweat" },
+  { value: "outdoor", label: "Outdoor / Rain", multiplier: 8, sweatLevel: "Moisture exposure" },
+  { value: "sleep", label: "Sleepwear", multiplier: 4, sweatLevel: "Prolonged contact" },
+];
+const FREQUENCY_OPTIONS = [
+  { value: "occasional", label: "Occasionally", wearsPerYear: 20 },
+  { value: "weekly", label: "Few times a week", wearsPerYear: 150 },
+  { value: "daily", label: "Daily", wearsPerYear: 365 },
+];
+const SKIN_OPTIONS = [
+  { value: "normal", label: "Normal skin", permeabilityMultiplier: 1.0 },
+  { value: "sensitive", label: "Sensitive / eczema", permeabilityMultiplier: 1.5 },
+  { value: "child", label: "Child's skin", permeabilityMultiplier: 2.0 },
+];
 
-// ─── CHEMICAL DATABASE ────────────────────────────────────────
-const CHEM_DB = {
-  formaldehyde: { name: "Formaldehyde", plain: "A known human carcinogen used as anti-wrinkle treatment", icon: "⚠️", group: "Group 1", groupLabel: "Carcinogenic to humans", sweat: "Release increases 150–300% in the presence of sweat", studies: ["formaldehyde_iarc", "formaldehyde_sweat", "formaldehyde_melanoma"], color: "#f87171" },
-  antimony: { name: "Antimony Trioxide", plain: "A suspected carcinogen in 85% of polyester", icon: "☢️", group: "Group 2B", groupLabel: "Possibly carcinogenic to humans", sweat: "Body heat and acidic sweat accelerate leaching from polyester", studies: ["antimony_sweat", "antimony_iarc"], color: "#b45309" },
-  bpa: { name: "Bisphenol A (BPA)", plain: "A hormone disruptor at dangerous levels in activewear", icon: "🧬", group: "Endocrine Disruptor", groupLabel: "Mimics estrogen in the human body", sweat: "Sweat-soaked polyester exceeds safe daily BPA intake by 125–570×", studies: ["bpa_clothing", "bpa_sweat_tdi"], color: "#a78bfa" },
-  pfas: { name: "PFAS (Forever Chemicals)", plain: "Indestructible chemicals in water-repellent clothing", icon: "♾️", group: "Group 2B", groupLabel: "Possibly carcinogenic (PFOA)", sweat: "Never breaks down — accumulates in your body over a lifetime", studies: ["sweat_leaching"], color: "#f87171" },
-  phthalates: { name: "Phthalates", plain: "Plasticizers that disrupt hormones", icon: "⚠️", group: "Endocrine Disruptor", groupLabel: "Linked to reduced testosterone and fertility", sweat: "Leach from plastisol prints and stretchy synthetic fabrics", studies: ["sweat_leaching"], color: "#b45309" },
-  azo_dyes: { name: "Azo Dyes", plain: "Textile dyes that release carcinogenic compounds", icon: "🎨", group: "Group 1 (amines)", groupLabel: "Some breakdown products confirmed carcinogens", sweat: "Sweat and friction release carcinogenic aromatic amines", studies: ["sweat_leaching"], color: "#f87171" },
-  microplastics: { name: "Microplastic Shedding", plain: "Microscopic plastic entering your bloodstream", icon: "🔬", group: "Emerging Concern", groupLabel: "Found in 80% of human blood samples tested", sweat: "Synthetics shed thousands of fibers per wear absorbed through skin", studies: ["microplastic_shedding", "microplastic_ingestion"], color: "#b45309" },
-  heavy_metals: { name: "Heavy Metals in Dyes", plain: "Lead, chromium, cadmium from textile dyes", icon: "🔬", group: "Group 1/2A", groupLabel: "Multiple confirmed or probable carcinogens", sweat: "Acidic sweat dissolves heavy metal residues from dyes", studies: ["sweat_leaching"], color: "#f87171" },
-};
-
-// ─── FOOD EQUIVALENCY ENGINE ──────────────────────────────────
-function getFoodEquivs(score, chemIds, materials) {
-  const equivs = [];
-  const mats = (materials || []).map(m => (typeof m === "string" ? m : m.name || "").toLowerCase());
-  const hasPoly = mats.some(m => m.includes("polyester"));
-  const hasSpan = mats.some(m => m.includes("spandex") || m.includes("elastane") || m.includes("lycra"));
-  const hasSynth = hasPoly || mats.some(m => m.includes("nylon") || m.includes("acrylic"));
-
-  if (chemIds.includes("antimony") && hasPoly) {
-    equivs.push({
-      icon: "🍶", headline: "Like drinking from",
-      stat: "4–6", unit: "hot plastic bottles daily",
-      desc: "Your polyester shirt uses the same antimony catalyst as plastic water bottles. Sweat accelerates the leaching — just like heat with bottled water.",
-      src: "Biver et al., Reg. Tox. Pharm., 2021 · Westerhoff et al., Water Research, 2008",
-      sids: ["antimony_sweat", "antimony_bottles"], color: "#b45309",
-    });
-  }
-  if (chemIds.includes("bpa") && (hasPoly || hasSpan)) {
-    equivs.push({
-      icon: "🥫", headline: "Equivalent BPA dose to eating",
-      stat: "3–5", unit: "canned meals every workout",
-      desc: "CEH found BPA in polyester/spandex at 22× California's safe limit. When you sweat, the dose can exceed what you'd absorb eating from BPA-lined cans.",
-      src: "CEH Investigation, 2022 · Hartle et al., Env. Research, 2016",
-      sids: ["bpa_clothing", "bpa_canned_food", "bpa_sweat_tdi"], color: "#a78bfa",
-    });
-  }
-  if (chemIds.includes("microplastics") && hasSynth) {
-    equivs.push({
-      icon: "🛍️", headline: "Microplastic exposure equal to eating",
-      stat: "~1", unit: "grocery bag of plastic per year",
-      desc: "Synthetic fabrics shed thousands of microplastic fibers per wear. Combined with food and water sources, textile-derived microplastics are a major exposure route.",
-      src: "Mitrano et al., Env. Sci. Tech., 2017 · Cox et al., Env. Sci. Tech., 2019",
-      sids: ["microplastic_shedding", "microplastic_ingestion"], color: "#b45309",
-    });
-  }
-  if (equivs.length === 0 && score < 70) {
-    equivs.push({
-      icon: "💧", headline: "Chemical absorption increases",
-      stat: "5×", unit: "when your skin is moist",
-      desc: "Dermal absorption jumps from 13% to 63% as humidity rises. Every workout in this garment amplifies chemical transfer into your body.",
-      src: "Kezic & Nielsen, Int. Arch. Occup. Env. Health, 2009",
-      sids: ["humidity_absorption"], color: "#b45309",
-    });
-  }
-  return equivs;
+function calculateExposure(baseConcentrationPpm, activity, frequency, skin) {
+  const absorbed = baseConcentrationPpm * activity.multiplier * skin.permeabilityMultiplier;
+  const annualExposure = absorbed * frequency.wearsPerYear;
+  return {
+    perWear: absorbed,
+    annual: annualExposure,
+    baselineMultiple: Math.round(activity.multiplier * skin.permeabilityMultiplier),
+    methodology: `Based on ${activity.sweatLevel} sweat amplification (Zheng et al., 2025) at standard skin permeability 37°C`,
+    citation: SOURCES.ZHENG_2025.url,
+  };
 }
 
-// ─── HELPERS ──────────────────────────────────────────────────
+// ── Confidence Badge ─────────────────────────────────────────
+const TIER_STYLES = {
+  1: { color: "#4ade80", bg: "rgba(74,222,128,0.12)", border: "rgba(74,222,128,0.3)", label: "Lab Tested" },
+  2: { color: "#c9a84c", bg: "rgba(201,168,76,0.12)", border: "rgba(201,168,76,0.3)", label: "Brand + Category Data" },
+  3: { color: "#a1a1aa", bg: "rgba(161,161,170,0.12)", border: "rgba(161,161,170,0.3)", label: "Category Data Only" },
+  4: { color: "#f87171", bg: "rgba(248,113,113,0.12)", border: "rgba(248,113,113,0.3)", label: "Data Gap" },
+};
+
+// ── Score Color ──────────────────────────────────────────────
 function scoreColor(s) {
-  if (s >= 70) return { text: "#16a34a", label: "LOW RISK", glow: "rgba(22,163,74,0.12)" };
+  if (s >= 70) return { text: "#16a34a", label: "LOWER RISK", glow: "rgba(22,163,74,0.12)" };
   if (s >= 50) return { text: "#ca8a04", label: "MODERATE RISK", glow: "rgba(202,138,4,0.1)" };
   if (s >= 40) return { text: "#c9a84c", label: "MODERATE RISK", glow: "rgba(201,168,76,0.15)" };
-  return { text: "#f87171", label: "HIGH RISK", glow: "rgba(248,113,113,0.25)" };
+  return { text: "#f87171", label: "ELEVATED RISK", glow: "rgba(248,113,113,0.25)" };
 }
 
-// Dark theme for bad scores (<50), light for everything else
 function getTheme(score) {
   const dark = score < 50;
   return {
@@ -113,9 +70,6 @@ function getTheme(score) {
     tagBg: dark ? "rgba(255,255,255,0.06)" : "#f6f9f4",
     tagBorder: dark ? "rgba(255,255,255,0.08)" : "#e2e8e0",
     tagColor: dark ? "#a1a1aa" : "#3a5c3a",
-    sciMethodBg: dark ? "rgba(74,222,128,0.06)" : "#f0fdf4",
-    sciMethodBorder: dark ? "rgba(74,222,128,0.12)" : "#dcfce7",
-    sciMethodColor: dark ? "#4ade80" : "#16a34a",
     altBg: dark ? "rgba(74,222,128,0.04)" : "#f2faf2",
     altBorder: dark ? "rgba(74,222,128,0.12)" : "#dcf5dc",
     altScoreColor: dark ? "#4ade80" : "#16a34a",
@@ -124,74 +78,128 @@ function getTheme(score) {
     btnSecBg: dark ? "rgba(255,255,255,0.04)" : "#ffffff",
     btnSecBorder: dark ? "rgba(255,255,255,0.1)" : "#e2e8e0",
     btnSecColor: dark ? "#ffffff" : "#1a2e1a",
-    chemSweatBg: dark ? "rgba(201,168,76,0.08)" : "rgba(202,138,4,0.06)",
-    chemSweatColor: dark ? "#c9a84c" : "#92400e",
-    studyBg: dark ? "rgba(255,255,255,0.02)" : "#f8faf8",
-    iarcKeyBg: dark ? "rgba(255,255,255,0.02)" : "#f6f9f4",
+    pillBg: dark ? "rgba(255,255,255,0.04)" : "#f6f9f4",
+    pillBorder: dark ? "rgba(255,255,255,0.08)" : "#e2e8e0",
+    pillActiveBg: dark ? "rgba(74,222,128,0.12)" : "#dcfce7",
+    pillActiveBorder: dark ? "rgba(74,222,128,0.3)" : "#86efac",
+    pillActiveColor: dark ? "#4ade80" : "#166534",
   };
 }
 
-function gutPunch(score, r) {
-  const mats = (r.materials || []).map(m => (typeof m === "string" ? m : m.name || "").toLowerCase());
-  const poly = mats.some(m => m.includes("polyester"));
-  const span = mats.some(m => m.includes("spandex") || m.includes("elastane"));
-  const n = (r.chemicals || []).length;
-  if (score < 30) {
-    if (poly && span) return "This polyester-spandex blend contains chemicals that absorb through your skin when you sweat — at levels up to 22× above safe limits.";
-    if (poly) return "85% of polyester contains antimony, a suspected carcinogen that leaches into your sweat. This garment's chemical profile is a serious concern.";
-    return `This garment contains ${n || "multiple"} chemicals linked to cancer, hormone disruption, or organ damage that absorb through your skin.`;
-  }
-  if (score < 50) {
-    if (poly) return "This garment's synthetic materials carry chemical compounds that transfer to your skin during normal wear — and significantly more when you sweat.";
-    return `${n || "Several"} chemical compounds in this garment have been flagged by health authorities. Exposure increases with sweat and prolonged contact.`;
-  }
-  if (score < 70) return "This garment shows moderate chemical exposure risk. Some compounds may transfer to skin during wear, especially when sweating.";
-  return "This garment shows low chemical exposure risk based on its materials and certifications.";
+// ── Base Concentration by Category ───────────────────────────
+function getBaseConcentration(category, materials) {
+  const cat = (category || "").toLowerCase();
+  const mat = (materials || []).map(m => (typeof m === "string" ? m : m.name || "").toLowerCase()).join(" ");
+  if (cat.includes("activewear") || cat.includes("athletic") || cat.includes("gym") || cat.includes("sport")) return 120;
+  if (cat.includes("outerwear") || cat.includes("jacket") || cat.includes("waterproof")) return 95;
+  if (cat.includes("underwear") || cat.includes("bra") || cat.includes("intimate")) return 80;
+  if (cat.includes("sleepwear") || cat.includes("pajama") || cat.includes("sleep")) return 60;
+  if (mat.includes("polyester") || mat.includes("nylon")) return 90;
+  if (mat.includes("organic") || mat.includes("linen") || mat.includes("hemp")) return 15;
+  return 50;
 }
 
-function normChemIds(result, scoreData) {
-  const ids = new Set();
-  const add = (c) => { if (typeof c === "string") ids.add(c.toLowerCase()); else if (c?.id) ids.add(c.id.toLowerCase()); };
-  (scoreData?.detectedChemicals || []).forEach(add);
-  (result?.chemicals || []).forEach(add);
-  return [...ids];
+// ── Recommendation Engine ────────────────────────────────────
+function getRecommendations(scannedProduct, allBrands) {
+  const cat = (scannedProduct.category || "Casual").toLowerCase();
+  const candidates = [];
+
+  allBrands.forEach(brand => {
+    if (brand.confidence_tier === 4) return;
+    brand.products?.forEach(p => {
+      const pCat = (p.cat || "").toLowerCase();
+      // Match same category or "casual" as fallback
+      if (pCat === cat || pCat.includes(cat) || cat.includes(pCat) || pCat === "casual") {
+        candidates.push({ ...p, brandName: brand.name, brandId: brand.id, brandTier: brand.tier, confidence_tier: brand.confidence_tier, good_on_you_rating: brand.good_on_you_rating, oeko_tex_certified: brand.oeko_tex_certified, gots_certified: brand.gots_certified, bluesign_certified: brand.bluesign_certified, nrdc_pfas_rating: brand.nrdc_pfas_rating });
+      }
+    });
+  });
+
+  // Sort: certified first, then by score descending
+  candidates.sort((a, b) => {
+    const aCert = (a.gots_certified ? 3 : 0) + (a.oeko_tex_certified ? 2 : 0) + (a.bluesign_certified ? 1 : 0);
+    const bCert = (b.gots_certified ? 3 : 0) + (b.oeko_tex_certified ? 2 : 0) + (b.bluesign_certified ? 1 : 0);
+    if (aCert !== bCert) return bCert - aCert;
+    return (b.score || 0) - (a.score || 0);
+  });
+
+  // Take top 3, skip current brand's products
+  const scannedBrand = (scannedProduct.brand || "").toLowerCase();
+  const results = candidates
+    .filter(c => c.brandName.toLowerCase() !== scannedBrand)
+    .slice(0, 3);
+
+  return results.map(rec => {
+    const reasons = [];
+    if (rec.gots_certified) reasons.push("GOTS certified");
+    if (rec.oeko_tex_certified) reasons.push("OEKO-TEX certified");
+    if (rec.bluesign_certified) reasons.push("bluesign certified");
+    if (rec.good_on_you_rating === "great") reasons.push("Good On You 'Great' rating");
+    if (rec.good_on_you_rating === "good") reasons.push("Good On You 'Good' rating");
+    if (rec.nrdc_pfas_rating === "A+" || rec.nrdc_pfas_rating === "A") reasons.push(`NRDC PFAS rating: ${rec.nrdc_pfas_rating}`);
+    if (reasons.length === 0) reasons.push("Lower known chemical risk profile");
+
+    return {
+      name: rec.name,
+      brand: rec.brandName,
+      score: rec.score,
+      reason: reasons.join(" + "),
+      confidence_tier: rec.confidence_tier,
+      fitDisclaimer: "Similar style profile — fit varies by brand and sizing",
+    };
+  });
+}
+
+// ── Pill Selector Component ──────────────────────────────────
+function PillRow({ options, value, onChange, T }) {
+  return (
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      {options.map(opt => {
+        const active = opt.value === value;
+        return (
+          <button key={opt.value} onClick={() => onChange(opt.value)} style={{
+            padding: "8px 16px", borderRadius: 20, border: `1.5px solid ${active ? T.pillActiveBorder : T.pillBorder}`,
+            background: active ? T.pillActiveBg : T.pillBg, color: active ? T.pillActiveColor : T.textSub,
+            fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 13, fontWeight: active ? 700 : 500,
+            cursor: "pointer", transition: "all .2s",
+          }}>
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════
 export default function ResultsPage({ result, score, onBack, onAddToWardrobe, onScanAlternative, onShare }) {
-  const [sciOpen, setSciOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [expChem, setExpChem] = useState(null);
+  const [exposureOpen, setExposureOpen] = useState(true);
+  const [activity, setActivity] = useState("casual");
+  const [frequency, setFrequency] = useState("occasional");
+  const [skin, setSkin] = useState("normal");
 
   useEffect(() => { const t = setTimeout(() => setMounted(true), 60); return () => clearTimeout(t); }, []);
 
-  // Demo fallback
-  const R = result || {
-    product_name: "Dri-FIT Training Tee", brand: "Nike", category: "Athletic Shirt",
-    materials: ["Polyester", "Spandex"],
-    chemicals: [{ id: "formaldehyde" }, { id: "antimony" }, { id: "bpa" }, { id: "microplastics" }],
-    certifications: [], origin: "Vietnam",
-    alternatives: [
-      { name: "Pact Organic Cotton Tee", brand: "Pact", score: 93, reason: "100% organic cotton, GOTS certified, no synthetic chemical treatments" },
-      { name: "Allbirds Trino Tee", brand: "Allbirds", score: 82, reason: "Eucalyptus fiber blend, OEKO-TEX certified, low-impact dyes" },
-      { name: "Patagonia Capilene Cool", brand: "Patagonia", score: 76, reason: "Recycled polyester but bluesign® certified, Fair Trade sewn" },
-    ],
-  };
-  const S = score || { overall: 28, detectedChemicals: ["formaldehyde", "antimony", "bpa", "microplastics"] };
+  const R = result || { product_name: "Unknown Product", brand: "Unknown Brand", category: "Clothing", materials: [], chemicals: [], certifications: [], origin: "Unknown", alternatives: [] };
+  const S = score || { overall: 50, v2: null };
   const ov = typeof S === "number" ? S : S.overall;
-  const cIds = normChemIds(R, S);
-  const chems = cIds.map(id => CHEM_DB[id]).filter(Boolean);
+  const v2 = S.v2 || null;
+  const tier = v2?.confidence_tier || 4;
+  const tierStyle = TIER_STYLES[tier];
   const sc = scoreColor(ov);
-  const gp = gutPunch(ov, R);
-  const foodEq = getFoodEquivs(ov, cIds, R.materials);
   const T = getTheme(ov);
 
-  // Collect studies
-  const sIds = new Set();
-  chems.forEach(c => c.studies?.forEach(s => sIds.add(s)));
-  foodEq.forEach(e => e.sids?.forEach(s => sIds.add(s)));
-  ["dermal_benzothiazole", "humidity_absorption", "flame_retardant_urine", "sweat_leaching"].forEach(s => sIds.add(s));
-  const studies = [...sIds].map(id => STUDIES[id]).filter(Boolean);
+  // Exposure calculator
+  const activityOpt = ACTIVITY_OPTIONS.find(a => a.value === activity);
+  const frequencyOpt = FREQUENCY_OPTIONS.find(f => f.value === frequency);
+  const skinOpt = SKIN_OPTIONS.find(s => s.value === skin);
+  const basePpm = getBaseConcentration(R.category, R.materials);
+  const exposure = calculateExposure(basePpm, activityOpt, frequencyOpt, skinOpt);
+
+  // Recommendations from brand database
+  const recommendations = getRecommendations(R, BRANDS);
+  const alts = recommendations.length > 0 ? recommendations : (R.alternatives || []);
 
   const bx = { background: T.cardBg, border: `1px solid ${T.cardBorder}`, borderRadius: 20, padding: 24, marginBottom: 24, boxShadow: T.dark ? "none" : "0 1px 3px rgba(0,0,0,0.04)" };
   const hd = { fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 800, margin: "0 0 4px 0", color: T.heading };
@@ -201,7 +209,7 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
     <div style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", background: T.bg, color: T.text, minHeight: "100vh", width: "100%", margin: "0 auto", position: "relative", overflow: "hidden" }}>
       <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-      {/* ═══ LAYER 1: THE SCREENSHOT ═══ */}
+      {/* ═══ LAYER 1: SCORE HERO ═══ */}
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", position: "relative", background: T.bg }}>
         <div style={{ position: "absolute", inset: 0, background: T.dark ? `radial-gradient(ellipse at 50% 20%, ${sc.glow} 0%, rgba(3,10,3,0) 70%)` : `radial-gradient(ellipse at 50% 20%, ${sc.glow} 0%, transparent 70%)`, pointerEvents: "none" }} />
 
@@ -214,7 +222,7 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
 
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: "0 24px", position: "relative", zIndex: 2, opacity: mounted ? 1 : 0, transform: mounted ? "translateY(0)" : "translateY(20px)", transition: "all 0.8s cubic-bezier(0.16,1,0.3,1)" }}>
           {/* Score ring */}
-          <div style={{ position: "relative", marginBottom: 28 }}>
+          <div style={{ position: "relative", marginBottom: 20 }}>
             <svg width="180" height="180" viewBox="0 0 180 180">
               <circle cx="90" cy="90" r="80" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
               <circle cx="90" cy="90" r="80" fill="none" stroke={sc.text} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(ov / 100) * 502.65} 502.65`} transform="rotate(-90 90 90)" style={{ filter: `drop-shadow(0 0 14px ${sc.text}50)`, transition: "stroke-dasharray 1.2s cubic-bezier(0.16,1,0.3,1)" }} />
@@ -225,13 +233,19 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
             </div>
           </div>
 
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: `${sc.text}${T.dark ? "15" : "10"}`, border: `1px solid ${sc.text}30`, borderRadius: 100, padding: "8px 24px", marginBottom: 20 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: sc.text, boxShadow: `0 0 8px ${sc.text}`, animation: ov < 40 ? "cwp 2s infinite" : "none" }} />
-            <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 800, color: sc.text, letterSpacing: 3, textTransform: "uppercase" }}>{sc.label}</span>
+          {/* Confidence Badge */}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: tierStyle.bg, border: `1px solid ${tierStyle.border}`, borderRadius: 100, padding: "6px 18px", marginBottom: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: tierStyle.color }} />
+            <span style={{ fontSize: 12, fontWeight: 700, color: tierStyle.color, letterSpacing: 1 }}>Tier {tier} — {tierStyle.label}</span>
           </div>
 
-          <p style={{ fontSize: 17, lineHeight: 1.6, textAlign: "center", color: T.textSub, maxWidth: 380, margin: "0 0 28px 0", fontWeight: 500, opacity: mounted ? 1 : 0, transform: mounted ? "translateY(0)" : "translateY(12px)", transition: "all 0.8s cubic-bezier(0.16,1,0.3,1) 0.3s" }}>{gp}</p>
+          {/* Risk label */}
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: `${sc.text}${T.dark ? "15" : "10"}`, border: `1px solid ${sc.text}30`, borderRadius: 100, padding: "8px 24px", marginBottom: 20 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: sc.text, boxShadow: `0 0 8px ${sc.text}` }} />
+            <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontWeight: 800, color: sc.text, letterSpacing: 3, textTransform: "uppercase" }}>{sc.label}</span>
+          </div>
 
+          {/* Product info */}
           <div style={{ textAlign: "center", opacity: mounted ? 1 : 0, transform: mounted ? "translateY(0)" : "translateY(12px)", transition: "all 0.8s cubic-bezier(0.16,1,0.3,1) 0.5s" }}>
             <div style={{ fontSize: 22, fontWeight: 700, fontFamily: "'Playfair Display',serif", color: T.heading, marginBottom: 4 }}>{R.product_name}</div>
             <div style={{ fontSize: 14, color: T.textMuted, letterSpacing: 1 }}>{R.brand?.toUpperCase()} · {R.category}</div>
@@ -243,6 +257,7 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
                 })}
               </div>
             )}
+            {v2 && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 10 }}>Risk assessed from {v2.components.length} public source{v2.components.length !== 1 ? "s" : ""}</div>}
           </div>
 
           <div style={{ marginTop: "auto", paddingBottom: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, opacity: 0.4, animation: "cwb 2s ease-in-out infinite" }}>
@@ -250,112 +265,130 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="2"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
           </div>
         </div>
-        <div style={{ position: "absolute", bottom: 8, left: 0, right: 0, textAlign: "center", fontSize: 9, color: T.textFaint, letterSpacing: 0.5, padding: "0 24px", zIndex: 3 }}>Estimates based on material composition analysis · Not a lab test result</div>
       </div>
 
-      {/* ═══ LAYER 2: THE SCROLL ═══ */}
+      {/* ═══ LAYER 2: SCORE BREAKDOWN + EXPOSURE ═══ */}
       <div style={{ padding: "40px 20px 20px", maxWidth: 800, margin: "0 auto" }}>
 
-        {/* FOOD EQUIVALENCIES */}
-        {foodEq.length > 0 && (
+        {/* SCORE BREAKDOWN */}
+        {v2 && v2.components.length > 0 && (
           <div style={bx}>
-            <h3 style={hd}>What You're Really Absorbing</h3>
-            <p style={sb}>Clothes don't just sit ON your body — chemicals get IN. Here's what that means.</p>
-            {foodEq.map((eq, i) => (
-              <div key={i} style={{ background: `${eq.color}08`, border: `1px solid ${eq.color}20`, borderRadius: 16, padding: 20, marginBottom: i < foodEq.length - 1 ? 14 : 0 }}>
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 10 }}>
-                  <span style={{ fontSize: 28, lineHeight: 1 }}>{eq.icon}</span>
-                  <div>
-                    <div style={{ fontSize: 12, color: T.textMuted, letterSpacing: 0.5, marginBottom: 4, textTransform: "uppercase" }}>{eq.headline}</div>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                      <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 36, fontWeight: 900, color: eq.color, lineHeight: 1 }}>{eq.stat}</span>
-                      <span style={{ fontSize: 16, fontWeight: 600, color: T.text, lineHeight: 1.3 }}>{eq.unit}</span>
-                    </div>
+            <h3 style={hd}>Score Breakdown</h3>
+            <p style={sb}>Each component traces to a named public source.</p>
+            {v2.components.map((comp, i) => (
+              <div key={i} style={{ marginBottom: i < v2.components.length - 1 ? 14 : 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: T.heading }}>{comp.source === "EU REACH Annex XVII" ? "Regulatory Flags" : comp.source.includes("NRDC") || comp.source.includes("Good On You") || comp.source.includes("OEKO-TEX") || comp.source.includes("GOTS") || comp.source.includes("bluesign") || comp.source.includes("General") ? "Brand Record" : "Category Research"}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontFamily: "'Playfair Display',serif", fontWeight: 800, fontSize: 18, color: scoreColor(comp.score).text }}>{comp.score}</span>
+                    {comp.sourceUrl && <a href={comp.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: T.dark ? "#4ade80" : "#16a34a", textDecoration: "none" }}>Source ↗</a>}
                   </div>
                 </div>
-                <p style={{ fontSize: 13, color: T.textSub, margin: "0 0 8px 0", lineHeight: 1.6 }}>{eq.desc}</p>
-                <p style={{ fontSize: 10, color: T.textFaint, margin: 0, fontStyle: "italic" }}>Estimate · {eq.src}</p>
+                <div style={{ height: 6, borderRadius: 3, background: T.dark ? "rgba(255,255,255,0.06)" : "#e2e8e0", overflow: "hidden", marginBottom: 6 }}>
+                  <div style={{ height: "100%", borderRadius: 3, width: `${comp.score}%`, background: scoreColor(comp.score).text, transition: "width 1s ease-out" }} />
+                </div>
+                <div style={{ fontSize: 12, color: T.textSub, lineHeight: 1.5 }}>{comp.label}</div>
+              </div>
+            ))}
+
+            {/* Data gaps */}
+            {v2.gaps.length > 0 && (
+              <div style={{ marginTop: 16, padding: 14, background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.15)", borderRadius: 12 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#f87171", marginBottom: 6 }}>Data Gaps</div>
+                {v2.gaps.map((gap, i) => (
+                  <div key={i} style={{ fontSize: 12, color: T.textSub, lineHeight: 1.6 }}>• {gap}</div>
+                ))}
+                <div style={{ fontSize: 11, color: T.textMuted, marginTop: 8, fontStyle: "italic" }}>CleanWear scores reflect available public data. Where data is missing, we say so.</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* REGULATORY FLAGS */}
+        {v2 && v2.flags.length > 0 && (
+          <div style={bx}>
+            <h3 style={hd}>Regulatory Flags</h3>
+            <p style={sb}>Chemical classes regulated under international frameworks for this garment type.</p>
+            {v2.flags.map((flag, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 0", borderBottom: i < v2.flags.length - 1 ? `1px solid ${T.cardBorder}` : "none" }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#f87171", marginTop: 6, flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: T.heading }}>{flag.chemical}</div>
+                  <div style={{ fontSize: 12, color: T.textSub }}>{flag.regulation} — Limit: {flag.limit}</div>
+                </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* CHEMICALS DETECTED */}
-        {chems.length > 0 && (
-          <div style={bx}>
-            <h3 style={hd}>Chemicals Detected</h3>
-            <p style={sb}>Based on material composition and manufacturing analysis.</p>
-            {chems.slice(0, 4).map((ch, i) => {
-              const ex = expChem === i;
-              return <div key={i} onClick={() => setExpChem(ex ? null : i)} style={{ background: T.studyBg, border: `1px solid ${ex ? ch.color + "40" : "rgba(255,255,255,0.06)"}`, borderRadius: 16, padding: 18, marginBottom: i < chems.length - 1 ? 12 : 0, cursor: "pointer", transition: "border-color 0.3s" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                  <div><div style={{ fontSize: 16, fontWeight: 700, color: T.heading }}>{ch.icon} {ch.name}</div><div style={{ fontSize: 13, color: T.textSub, marginTop: 2 }}>{ch.plain}</div></div>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: ch.color, background: `${ch.color}15`, border: `1px solid ${ch.color}30`, borderRadius: 8, padding: "3px 8px", whiteSpace: "nowrap", letterSpacing: 0.5 }}>{ch.group}</span>
+        {/* EXPOSURE CALCULATOR */}
+        <div style={bx}>
+          <div onClick={() => setExposureOpen(!exposureOpen)} style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h3 style={{ ...hd, margin: 0 }}>Your Exposure Profile</h3>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="2" style={{ transform: exposureOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.3s" }}><path d="M6 9l6 6 6-6" /></svg>
+          </div>
+          {exposureOpen && (
+            <div style={{ marginTop: 20 }}>
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: T.textMuted, marginBottom: 8 }}>Activity Context</div>
+                <PillRow options={ACTIVITY_OPTIONS} value={activity} onChange={setActivity} T={T} />
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: T.textMuted, marginBottom: 8 }}>Wear Frequency</div>
+                <PillRow options={FREQUENCY_OPTIONS} value={frequency} onChange={setFrequency} T={T} />
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: T.textMuted, marginBottom: 8 }}>Skin Profile</div>
+                <PillRow options={SKIN_OPTIONS} value={skin} onChange={setSkin} T={T} />
+              </div>
+
+              {/* Exposure statement */}
+              <div style={{ background: T.dark ? "rgba(201,168,76,0.08)" : "rgba(202,138,4,0.06)", border: `1px solid ${T.dark ? "rgba(201,168,76,0.2)" : "rgba(202,138,4,0.15)"}`, borderRadius: 14, padding: 18 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: T.heading, lineHeight: 1.6, marginBottom: 10 }}>
+                  If you wear this {R.category?.toLowerCase() || "garment"} {frequencyOpt.label.toLowerCase()} during {activityOpt.label.toLowerCase()}, your estimated annual dermal exposure is approximately <span style={{ fontFamily: "'Playfair Display',serif", fontWeight: 900, fontSize: 20, color: exposure.baselineMultiple > 100 ? "#f87171" : exposure.baselineMultiple > 5 ? "#c9a84c" : "#16a34a" }}>{exposure.baselineMultiple.toLocaleString()}x</span> baseline.
                 </div>
-                <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 8, fontStyle: "italic" }}>{ch.groupLabel}</div>
-                <div style={{ fontSize: 12, color: "#b45309", background: T.chemSweatBg, borderRadius: 10, padding: "8px 12px", lineHeight: 1.5 }}>💧 <strong>Sweat factor:</strong> {ch.sweat}</div>
-                {ex && ch.studies && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: T.textMuted, marginBottom: 8, letterSpacing: 0.5, textTransform: "uppercase" }}>Supporting research</div>
-                    {ch.studies.map(sid => { const st = STUDIES[sid]; if (!st) return null; return <div key={sid} style={{ marginBottom: 8 }}><div style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{st.title}</div><div style={{ fontSize: 10, color: T.textMuted }}>{st.authors} · <em>{st.journal}</em> ({st.year})</div></div>; })}
+                <div style={{ fontSize: 12, color: T.textSub, lineHeight: 1.6 }}>
+                  Based on {activityOpt.sweatLevel.toLowerCase()} at standard skin permeability (37°C).
+                  Sweat increases PFAS dermal absorption up to 3,252x versus dry contact (Zheng et al., 2025).
+                  {" "}<a href={SOURCES.ZHENG_2025.url} target="_blank" rel="noopener noreferrer" style={{ color: T.dark ? "#4ade80" : "#16a34a", textDecoration: "none", fontWeight: 600 }}>View study ↗</a>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ═══ SAFER ALTERNATIVES ═══ */}
+        {alts.length > 0 && (
+          <div style={bx}>
+            <h3 style={hd}>Safer Alternatives</h3>
+            <p style={sb}>Same garment category with lower known chemical risk profiles.</p>
+            {alts.map((alt, i) => {
+              const altTier = alt.confidence_tier || 3;
+              const altTierStyle = TIER_STYLES[altTier];
+              return (
+                <div key={i} onClick={() => onScanAlternative?.(alt.name || alt.brand)} style={{ background: T.altBg, border: `1px solid ${T.altBorder}`, borderRadius: 16, padding: 16, marginBottom: i < alts.length - 1 ? 10 : 0, cursor: onScanAlternative ? "pointer" : "default" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: T.heading }}>{alt.name}</div>
+                      <div style={{ fontSize: 12, color: T.textMuted }}>{alt.brand}</div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {alt.score && <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 900, color: T.altScoreColor }}>{alt.score}</div>}
+                      {alt.confidence_tier && (
+                        <div style={{ width: 8, height: 8, borderRadius: "50%", background: altTierStyle.color }} title={`Tier ${altTier}`} />
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>;
+                  <p style={{ fontSize: 12, color: T.dark ? "#4ade80" : "#166534", margin: "0 0 4px 0", lineHeight: 1.5, fontWeight: 600 }}>{alt.reason}</p>
+                  {alt.fitDisclaimer && <p style={{ fontSize: 11, color: T.textMuted, margin: 0, fontStyle: "italic" }}>{alt.fitDisclaimer}</p>}
+                </div>
+              );
             })}
           </div>
         )}
 
-        {/* ═══ LAYER 3: THE SCIENCE ═══ */}
-        <div style={{ ...bx, padding: 0, overflow: "hidden" }}>
-          <button onClick={() => setSciOpen(!sciOpen)} style={{ width: "100%", padding: "18px 24px", background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", fontFamily: "inherit" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ fontSize: 20 }}>🧬</span><span style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 800, color: T.heading }}>View the Science</span></div>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.textMuted} strokeWidth="2" style={{ transform: sciOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.3s" }}><path d="M6 9l6 6 6-6" /></svg>
-          </button>
-          {sciOpen && <div style={{ padding: "0 24px 24px" }}>
-            <p style={{ fontSize: 13, color: T.textMuted, margin: "0 0 16px 0", lineHeight: 1.5 }}>Every claim traces to peer-reviewed research or government findings. CleanWear scores are risk estimates based on material analysis, not lab tests.</p>
-            <div style={{ background: T.sciMethodBg, borderRadius: 14, padding: 16, marginBottom: 16, border: "1px solid " + T.sciMethodBorder }}>
-              <h4 style={{ fontSize: 14, fontWeight: 700, color: T.sciMethodColor, margin: "0 0 8px 0" }}>Scoring Methodology</h4>
-              <p style={{ fontSize: 12, color: T.textSub, margin: 0, lineHeight: 1.6 }}>Every garment starts at 100. Points deducted via two layers: (1) Chemical Risk Assessment — compounds likely present based on materials, penalties set by authority classifications (IARC, EFSA, NTP). (2) Exposure Pathway Multiplier — how chemicals transfer from fabric to body based on garment type and wear conditions. Certifications (OEKO-TEX, GOTS, bluesign®) remove specific penalties.</p>
-            </div>
-            <h4 style={{ fontSize: 14, fontWeight: 700, color: T.heading, margin: "0 0 12px 0", letterSpacing: 0.5 }}>Referenced Studies ({studies.length})</h4>
-            {studies.map((st, i) => (
-              <div key={i} style={{ background: T.studyBg, border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: 14, marginBottom: 10 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>{st.title}</div>
-                <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 6 }}>{st.authors} · <em>{st.journal}</em> ({st.year})</div>
-                <div style={{ fontSize: 12, color: T.textSub, lineHeight: 1.5, background: T.studyBg, borderRadius: 8, padding: "8px 10px" }}><strong style={{ color: "#b45309" }}>Key finding:</strong> {st.finding}</div>
-                {st.doi && !/^(CEH|JRC|UoB|IARC|PMC)/.test(st.doi) && <div style={{ fontSize: 10, color: T.textFaint, marginTop: 6 }}>DOI: {st.doi}</div>}
-              </div>
-            ))}
-            <div style={{ background: T.studyBg, borderRadius: 12, padding: 14, marginTop: 8 }}>
-              <h4 style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, margin: "0 0 8px 0", letterSpacing: 1, textTransform: "uppercase" }}>IARC Classification Key</h4>
-              {[{ g: "Group 1", c: "#f87171", d: "Carcinogenic to humans (e.g., Formaldehyde)" }, { g: "Group 2A", c: "#fb923c", d: "Probably carcinogenic" }, { g: "Group 2B", c: "#c9a84c", d: "Possibly carcinogenic (e.g., Antimony trioxide)" }].map((cl, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: i < 2 ? 6 : 0 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: cl.c, background: `${cl.c}15`, borderRadius: 6, padding: "2px 8px", minWidth: 60, textAlign: "center" }}>{cl.g}</span>
-                  <span style={{ fontSize: 12, color: T.textSub }}>{cl.d}</span>
-                </div>
-              ))}
-            </div>
-          </div>}
-        </div>
-
-        {/* ═══ LAYER 4: THE ACTION ═══ */}
-        {R.alternatives?.length > 0 && (
-          <div style={bx}>
-            <h3 style={hd}>Safer Alternatives</h3>
-            <p style={sb}>Similar products with lower chemical exposure risk.</p>
-            {R.alternatives.map((alt, i) => (
-              <div key={i} onClick={() => onScanAlternative?.(alt.name)} style={{ background: T.altBg, border: `1px solid ${T.altBorder}`, borderRadius: 16, padding: 16, marginBottom: i < R.alternatives.length - 1 ? 10 : 0, cursor: onScanAlternative ? "pointer" : "default" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <div><div style={{ fontSize: 15, fontWeight: 700, color: T.heading }}>{alt.name}</div><div style={{ fontSize: 12, color: T.textMuted }}>{alt.brand}</div></div>
-                  {alt.score && <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 900, color: T.altScoreColor }}>{alt.score}</div>}
-                </div>
-                <p style={{ fontSize: 12, color: T.textSub, margin: 0, lineHeight: 1.5 }}>{alt.reason}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingBottom: 40 }}>
+        {/* ═══ ACTIONS ═══ */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingBottom: 20 }}>
           <button onClick={onAddToWardrobe} style={{ width: "100%", padding: "18px 24px", background: T.btnPrimaryBg, border: "1px solid rgba(22,101,52,0.3)", borderRadius: 16, cursor: "pointer", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 16, fontWeight: 700, color: T.btnPrimaryColor, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>Add to Wardrobe
           </button>
@@ -364,8 +397,9 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
           </button>
         </div>
 
+        {/* ═══ DISCLAIMER ═══ */}
         <div style={{ textAlign: "center", padding: "0 12px 24px", fontSize: 10, color: T.textFaint, lineHeight: 1.6 }}>
-          CleanWear provides risk estimates based on publicly available material and chemical research. Scores are not lab test results. All equivalencies are estimates derived from peer-reviewed studies cited above. © 2026 CleanWear.
+          Scores are based on published regulatory data, NGO research, and peer-reviewed studies. CleanWear does not independently test garments unless CleanWear Certified. All exposure estimates are derived from cited research. © 2026 CleanWear.
         </div>
       </div>
 

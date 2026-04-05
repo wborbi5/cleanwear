@@ -776,8 +776,71 @@ export const BRANDS = [
     ]},
 ];
 
+// ============================================================
+// Brand Safety Data Layer — sourced from public records
+// NRDC PFAS Scorecard 2023, Good On You, OEKO-TEX registry
+// ============================================================
+const BRAND_SAFETY_DATA = {
+  levis:            { nrdc_pfas_rating: "A+", oeko_tex_certified: false, good_on_you_rating: "it's a start", confidence_tier: 2, data_sources: [{ name: "NRDC PFAS Brand Scorecard", url: "https://www.nrdc.org/press-releases/new-pfas-scorecard-popular-apparel-brands-levi-strauss-earns-outdoor-brands-fail", year: 2023 }] },
+  nike:             { nrdc_pfas_rating: "B",  oeko_tex_certified: false, good_on_you_rating: "it's a start", confidence_tier: 2, data_sources: [{ name: "NRDC PFAS Brand Scorecard", url: "https://www.nrdc.org/press-releases/new-pfas-scorecard-popular-apparel-brands-levi-strauss-earns-outdoor-brands-fail", year: 2023 }, { name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  adidas:           { nrdc_pfas_rating: "B",  oeko_tex_certified: false, good_on_you_rating: "it's a start", confidence_tier: 2, data_sources: [{ name: "NRDC PFAS Brand Scorecard", url: "https://www.nrdc.org/press-releases/new-pfas-scorecard-popular-apparel-brands-levi-strauss-earns-outdoor-brands-fail", year: 2023 }, { name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  columbia:         { nrdc_pfas_rating: "F",  oeko_tex_certified: false, good_on_you_rating: null, confidence_tier: 2, data_sources: [{ name: "NRDC PFAS Brand Scorecard", url: "https://www.nrdc.org/press-releases/new-pfas-scorecard-popular-apparel-brands-levi-strauss-earns-outdoor-brands-fail", year: 2023 }] },
+  patagonia:        { nrdc_pfas_rating: null,  oeko_tex_certified: false, good_on_you_rating: "great", gots_certified: true, bluesign_certified: true, confidence_tier: 2, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  hm:               { nrdc_pfas_rating: null,  oeko_tex_certified: true,  good_on_you_rating: "it's a start", confidence_tier: 3, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  shein:            { nrdc_pfas_rating: null,  oeko_tex_certified: false, good_on_you_rating: "we avoid", confidence_tier: 3, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  pact:             { nrdc_pfas_rating: null,  oeko_tex_certified: true,  good_on_you_rating: "great", gots_certified: true, confidence_tier: 2, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }, { name: "GOTS Registry", url: "https://global-standard.org", year: 2024 }] },
+  smartwool:        { nrdc_pfas_rating: null,  oeko_tex_certified: false, good_on_you_rating: "good", bluesign_certified: true, confidence_tier: 2, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  allbirds:         { nrdc_pfas_rating: null,  oeko_tex_certified: false, good_on_you_rating: "great", confidence_tier: 2, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  coyuchi:          { nrdc_pfas_rating: null,  oeko_tex_certified: true,  good_on_you_rating: "great", gots_certified: true, confidence_tier: 2, data_sources: [{ name: "GOTS Registry", url: "https://global-standard.org", year: 2024 }] },
+  under_armour:     { nrdc_pfas_rating: "D",  oeko_tex_certified: false, good_on_you_rating: "not good enough", confidence_tier: 2, data_sources: [{ name: "NRDC PFAS Brand Scorecard", url: "https://www.nrdc.org/press-releases/new-pfas-scorecard-popular-apparel-brands-levi-strauss-earns-outdoor-brands-fail", year: 2023 }] },
+  lululemon:        { nrdc_pfas_rating: "C",  oeko_tex_certified: false, good_on_you_rating: "it's a start", confidence_tier: 2, data_sources: [{ name: "NRDC PFAS Brand Scorecard", url: "https://www.nrdc.org/press-releases/new-pfas-scorecard-popular-apparel-brands-levi-strauss-earns-outdoor-brands-fail", year: 2023 }] },
+  north_face:       { nrdc_pfas_rating: "F",  oeko_tex_certified: false, good_on_you_rating: "it's a start", bluesign_certified: true, confidence_tier: 2, data_sources: [{ name: "NRDC PFAS Brand Scorecard", url: "https://www.nrdc.org/press-releases/new-pfas-scorecard-popular-apparel-brands-levi-strauss-earns-outdoor-brands-fail", year: 2023 }] },
+  temu:             { nrdc_pfas_rating: null,  oeko_tex_certified: false, good_on_you_rating: "we avoid", confidence_tier: 3, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  fashion_nova:     { nrdc_pfas_rating: null,  oeko_tex_certified: false, good_on_you_rating: "we avoid", confidence_tier: 3, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  boohoo:           { nrdc_pfas_rating: null,  oeko_tex_certified: false, good_on_you_rating: "we avoid", confidence_tier: 3, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  eileen_fisher:    { nrdc_pfas_rating: null,  oeko_tex_certified: true,  good_on_you_rating: "great", bluesign_certified: true, confidence_tier: 2, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }, { name: "OEKO-TEX Label Check", url: "https://www.oeko-tex.com/en/label-check", year: 2024 }] },
+  tentree:          { nrdc_pfas_rating: null,  oeko_tex_certified: true,  good_on_you_rating: "great", confidence_tier: 2, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  kotn:             { nrdc_pfas_rating: null,  oeko_tex_certified: false, good_on_you_rating: "great", gots_certified: true, confidence_tier: 2, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  mate_the_label:   { nrdc_pfas_rating: null,  oeko_tex_certified: true,  good_on_you_rating: "great", gots_certified: true, confidence_tier: 2, data_sources: [{ name: "GOTS Registry", url: "https://global-standard.org", year: 2024 }] },
+  organic_basics:   { nrdc_pfas_rating: null,  oeko_tex_certified: true,  good_on_you_rating: "great", gots_certified: true, confidence_tier: 2, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  gymshark:         { nrdc_pfas_rating: null,  oeko_tex_certified: false, good_on_you_rating: "not good enough", confidence_tier: 3, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  asos:             { nrdc_pfas_rating: null,  oeko_tex_certified: false, good_on_you_rating: "it's a start", confidence_tier: 3, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  uniqlo:           { nrdc_pfas_rating: null,  oeko_tex_certified: false, good_on_you_rating: "it's a start", confidence_tier: 3, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  gap:              { nrdc_pfas_rating: null,  oeko_tex_certified: false, good_on_you_rating: "it's a start", confidence_tier: 3, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  everlane:         { nrdc_pfas_rating: null,  oeko_tex_certified: false, good_on_you_rating: "good", confidence_tier: 3, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  victorias_secret: { nrdc_pfas_rating: null,  oeko_tex_certified: false, good_on_you_rating: "not good enough", confidence_tier: 3, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
+  "2xu":            { nrdc_pfas_rating: null,  oeko_tex_certified: false, good_on_you_rating: null, confidence_tier: 4, data_sources: [] },
+};
+
+// Merge safety data into brand records
+BRANDS.forEach(b => {
+  const safety = BRAND_SAFETY_DATA[b.id];
+  if (safety) {
+    b.nrdc_pfas_rating = safety.nrdc_pfas_rating || null;
+    b.oeko_tex_certified = safety.oeko_tex_certified || false;
+    b.good_on_you_rating = safety.good_on_you_rating || null;
+    b.gots_certified = safety.gots_certified || false;
+    b.bluesign_certified = safety.bluesign_certified || false;
+    b.prop65_violations = safety.prop65_violations || [];
+    b.confidence_tier = safety.confidence_tier || 3;
+    b.data_sources = safety.data_sources || [];
+  } else {
+    // No public source data available
+    b.nrdc_pfas_rating = null;
+    b.oeko_tex_certified = false;
+    b.good_on_you_rating = null;
+    b.gots_certified = false;
+    b.bluesign_certified = false;
+    b.prop65_violations = [];
+    b.confidence_tier = 4;
+    b.data_sources = [];
+  }
+  b.brand_name = b.name; // alias for scoring engine compatibility
+});
+
 // Precomputed lookups
 export const BRAND_BY_ID = Object.fromEntries(BRANDS.map(b => [b.id, b]));
+export const BRAND_BY_NAME = Object.fromEntries(BRANDS.map(b => [b.name.toLowerCase(), b]));
 export const BRAND_TIERS = {
   safe: { label: "Low Risk", color: "#16a34a", range: "70-100" },
   moderate: { label: "Moderate", color: "#ca8a04", range: "45-69" },

@@ -70,113 +70,11 @@ export default async function handler(req, res) {
   }
 
   // ========================================
-  // LAYER 3: Claude AI analysis
+  // LAYER 3: Keyword fallback (Claude AI removed — scores now come from data layer)
   // ========================================
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    const fb = buildFallback(query, isBarcode)
-    await cacheProduct(q, isBarcode, fb)
-    return res.status(200).json({ ...fb, _source: 'fallback' })
-  }
-
-  const systemPrompt = `You are a textile safety analyst. Analyze ANY clothing or textile product for chemical safety.
-
-CRITICAL: You MUST always return valid JSON. Never refuse. Never say you cannot find something.
-
-If you cannot find the exact product:
-- Use your knowledge of the brand's typical materials
-- Use the product category to infer likely materials
-- Make your best educated analysis — an approximate analysis is far better than no analysis
-
-MATERIAL → CHEMICAL RULES (always apply):
-- Polyester → "antimony", "microplastics"  
-- Spandex/Elastane/Lycra → "phthalates"
-- Nylon → "microplastics"
-- Waterproof → "pfas"
-- Wrinkle-free cotton → "formaldehyde"
-- Bright colored synthetics → "azo_dyes"
-- Fast fashion → "formaldehyde", "heavy_metals"
-- Any synthetic blend for athletics → "bpa" (leaches with heat/sweat)
-
-Return ONLY this JSON:
-{"product_name":"string","brand":"string","category":"string","materials":[{"name":"string","percentage":number}],"chemicals":["only from: bpa,pfas,formaldehyde,phthalates,azo_dyes,antimony,heavy_metals,microplastics"],"certifications":["only from: oeko-tex,gots,bluesign,fair_trade,cradle_to_cradle"],"origin":"string","health_notes":"string","alternatives":[{"name":"string","brand":"string","reason":"string"}]}
-
-Always 2-3 safer alternatives. Empty arrays for certifications if none known.`
-
-  const userMessage = isBarcode
-    ? `Analyze clothing product with barcode/UPC: ${q}. Search the web for this barcode. If you can't identify it, analyze as a generic garment.`
-    : `Analyze this clothing product for chemical safety: ${q}`
-
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userMessage }],
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-      }),
-    })
-
-    if (!response.ok) {
-      console.error('Anthropic API error:', response.status)
-      const fb = buildFallback(query, isBarcode)
-      await cacheProduct(q, isBarcode, fb)
-      return res.status(200).json({ ...fb, _source: 'fallback' })
-    }
-
-    const data = await response.json()
-    const textContent = data.content
-      ?.filter((b) => b.type === 'text')
-      .map((b) => b.text)
-      .join('\n')
-
-    if (!textContent) {
-      const fb = buildFallback(query, isBarcode)
-      await cacheProduct(q, isBarcode, fb)
-      return res.status(200).json({ ...fb, _source: 'fallback' })
-    }
-
-    const jsonMatch = textContent.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      const fb = buildFallback(query, isBarcode)
-      await cacheProduct(q, isBarcode, fb)
-      return res.status(200).json({ ...fb, _source: 'fallback' })
-    }
-
-    try {
-      const pd = JSON.parse(jsonMatch[0].replace(/```json|```/g, '').trim())
-
-      pd.product_name = pd.product_name || query
-      pd.brand = pd.brand || 'Unknown Brand'
-      pd.category = pd.category || 'Clothing'
-      pd.materials = Array.isArray(pd.materials) ? pd.materials : []
-      pd.chemicals = Array.isArray(pd.chemicals) ? pd.chemicals : []
-      pd.certifications = Array.isArray(pd.certifications) ? pd.certifications : []
-      pd.origin = pd.origin || 'Unknown'
-      pd.health_notes = pd.health_notes || ''
-      pd.alternatives = Array.isArray(pd.alternatives) ? pd.alternatives : []
-      pd.materials = pd.materials.filter(m => m.name && typeof m.percentage === 'number')
-
-      await cacheProduct(q, isBarcode, pd)
-      return res.status(200).json({ ...pd, _source: 'claude' })
-    } catch {
-      const fb = buildFallback(query, isBarcode)
-      await cacheProduct(q, isBarcode, fb)
-      return res.status(200).json({ ...fb, _source: 'fallback' })
-    }
-  } catch (err) {
-    console.error('Scan error:', err)
-    const fb = buildFallback(query, isBarcode)
-    await cacheProduct(q, isBarcode, fb)
-    return res.status(200).json({ ...fb, _source: 'fallback' })
-  }
+  const fb = buildFallback(query, isBarcode)
+  await cacheProduct(q, isBarcode, fb)
+  return res.status(200).json({ ...fb, _source: 'fallback' })
 }
 
 // ========================================

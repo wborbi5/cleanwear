@@ -136,7 +136,7 @@ function buildVisionFallback(mode) {
     origin: 'Unknown',
     health_notes: mode === 'tag'
       ? 'Could not read tag clearly. Try holding the camera closer with good lighting, or enter the information manually.'
-      : 'Could not identify fabric from photo. Try a closer, well-lit photo of the fabric texture, or use the Fabric Detective quiz.',
+      : 'Could not identify fabric from photo. Try a closer, well-lit photo of the fabric texture, or enter the product name manually.',
     alternatives: [
       { name: 'Organic Cotton Tee', brand: 'Patagonia', reason: 'GOTS certified organic cotton, minimal chemical treatments.' },
       { name: 'Merino Wool Base Layer', brand: 'Smartwool', reason: 'Natural fibers without synthetic chemical treatments.' },

@@ -34,7 +34,12 @@ export default function AuthModal({ isOpen, onClose, onSuccess, trigger }) {
     setState(STATES.LOADING);
     const { error } = await signInWithEmail(email.trim());
     if (error) {
-      setErrorMsg(error.message || "Something went wrong");
+      const msg = error.message || "Something went wrong";
+      if (msg.toLowerCase().includes("rate") || msg.toLowerCase().includes("limit") || msg.toLowerCase().includes("too many")) {
+        setErrorMsg("Too many sign-in attempts. Please wait a few minutes and try again.");
+      } else {
+        setErrorMsg(msg);
+      }
       setState(STATES.ERROR);
     } else {
       setState(STATES.SENT);

@@ -93,7 +93,7 @@ export default function BrandExplore({ onScanProduct, onScanProductDirect }) {
             Typical Materials
           </div>
           <div style={{ fontSize: 13, color: "var(--tx3)", lineHeight: 1.6 }}>
-            {b.materials.join(" &#183; ")}
+            {b.materials.join(" \u00b7 ")}
           </div>
           <div style={{ fontSize: 12, color: "var(--tx4)", marginTop: 6 }}>
             Made in: {b.origin}
@@ -246,7 +246,7 @@ export default function BrandExplore({ onScanProduct, onScanProductDirect }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
                 <div style={{ fontSize: 11, color: "var(--tx4)", marginTop: 2 }}>
-                  {p.brand} &#183; {p.category}{p.materialsDisplay ? " &#183; " + p.materialsDisplay.split(",")[0].trim() : ""}
+                  {p.brand} {"\u00b7"} {p.category}{p.materialsDisplay ? ` \u00b7 ${p.materialsDisplay.split(",")[0].trim()}` : ""}
                 </div>
               </div>
               <div style={{ fontSize: 12, color: "var(--tx4)" }}>&#8594;</div>

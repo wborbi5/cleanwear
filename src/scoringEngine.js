@@ -236,12 +236,20 @@ function getCategoryResearch(category, materials) {
       finding: "Children's textiles showed sweat-amplified PFAS dermal transfer up to 3,252x versus dry contact"
     };
   }
-  if (mat.includes("cotton") || mat.includes("organic") || mat.includes("linen") || mat.includes("hemp") || mat.includes("wool")) {
+  if (mat.includes("cotton") || mat.includes("organic") || mat.includes("linen") || mat.includes("hemp") || mat.includes("wool") || mat.includes("silk") || mat.includes("cashmere")) {
     return {
       riskScore: 70,
       study: SOURCES.ECHA_REACH.name,
       url: SOURCES.ECHA_REACH.url,
       finding: "Natural fiber garments generally carry lower chemical finishing risk than synthetic performance fabrics"
+    };
+  }
+  if (mat.includes("viscose") || mat.includes("rayon") || mat.includes("modal") || mat.includes("bamboo") || mat.includes("tencel") || mat.includes("lyocell") || mat.includes("cupro")) {
+    return {
+      riskScore: 55,
+      study: SOURCES.ECHA_REACH.name,
+      url: SOURCES.ECHA_REACH.url,
+      finding: "Regenerated cellulose fibers (viscose, modal, bamboo) involve chemical processing but carry moderate residue risk"
     };
   }
   if (mat.includes("polyester") || mat.includes("nylon") || mat.includes("acrylic") || mat.includes("spandex") || mat.includes("elastane")) {

@@ -488,6 +488,21 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
       {/* ═══ DETAILS ═══ */}
       <div style={{ padding: "40px 20px 20px", maxWidth: 800, margin: "0 auto" }}>
 
+        {/* BRAND-LEVEL ONLY NOTICE (UPC resolved brand but not specific product) */}
+        {R._brand_level_only && (
+          <div style={{ ...card, background: "rgba(201,168,76,0.06)", borderColor: "rgba(201,168,76,0.2)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+              <div style={{ fontSize: 20 }}>{"\uD83D\uDCE6"}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#c9a84c" }}>Brand-Level Assessment</div>
+            </div>
+            <p style={{ fontSize: 13, color: "#a1a1aa", lineHeight: 1.6, margin: 0 }}>
+              This specific product isn't in our database yet, but we identified the brand from the barcode.
+              The score below reflects <strong style={{ color: "#e8e8e8" }}>{R.brand}</strong>'s overall chemical safety profile
+              based on public data — not product-level testing.
+            </p>
+          </div>
+        )}
+
         {/* CONFIDENCE EXPLANATION */}
         <div style={{ ...card, background: conf.bg, borderColor: conf.border }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>

@@ -1,5 +1,5 @@
 // Vercel Serverless Function — /api/scan
-// 4-LAYER LOOKUP: Supabase cache → Open Products Facts → Claude AI → keyword fallback
+// 5-LAYER LOOKUP: Supabase cache → UPC manufacturer lookup → Open Products Facts → brand-level fallback → keyword fallback
 // Every scan result is cached in Supabase so the database grows with every user.
 
 import { createClient } from '@supabase/supabase-js'
@@ -42,35 +42,138 @@ export default async function handler(req, res) {
   }
 
   // ========================================
-  // LAYER 2: Open Products Facts (barcodes only)
+  // LAYER 2: UPC Manufacturer Lookup (barcodes only)
+  // Queries multiple free UPC databases to resolve a barcode to a brand/product.
+  // Even if we only get a brand name, we can surface a brand-level safety result.
   // ========================================
-  let opfResult = null
+  let upcBrand = null
+  let upcProductName = null
+  let upcCategory = null
+  let upcMaterials = []
+  let upcSource = null
+
   if (isBarcode) {
+    // 2a: UPC Items DB (free trial — 100 req/day, no key needed)
     try {
-      const opfRes = await fetch(
-        `https://world.openproductsfacts.org/api/v3/product/${q}.json`,
-        { headers: { 'User-Agent': 'CleanWear/1.0 (cleanwear.app)' } }
+      const upcRes = await fetch(
+        `https://api.upcitemdb.com/prod/trial/lookup?upc=${q}`,
+        { headers: { 'Accept': 'application/json', 'User-Agent': 'CleanWear/1.0 (cleanwear.app)' } }
       )
-      if (opfRes.ok) {
-        const opfData = await opfRes.json()
-        if (opfData?.product?.product_name) {
-          opfResult = parseOpenProductsFacts(opfData.product)
-          console.log('[scan] Open Products Facts hit:', opfResult.product_name)
+      if (upcRes.ok) {
+        const upcData = await upcRes.json()
+        if (upcData?.items?.length > 0) {
+          const item = upcData.items[0]
+          upcBrand = item.brand || null
+          upcProductName = item.title || null
+          upcCategory = item.category || null
+          upcSource = 'upc_items_db'
+          console.log('[scan] UPC Items DB hit:', upcBrand, upcProductName)
         }
       }
     } catch (e) {
-      console.warn('[scan] Open Products Facts failed:', e.message)
+      console.warn('[scan] UPC Items DB failed:', e.message)
+    }
+
+    // 2b: Open Products Facts (clothing/textile products)
+    if (!upcProductName) {
+      try {
+        const opfRes = await fetch(
+          `https://world.openproductsfacts.org/api/v3/product/${q}.json`,
+          { headers: { 'User-Agent': 'CleanWear/1.0 (cleanwear.app)' } }
+        )
+        if (opfRes.ok) {
+          const opfData = await opfRes.json()
+          if (opfData?.product?.product_name) {
+            const parsed = parseOpenProductsFacts(opfData.product)
+            const enriched = enrichWithChemicals(parsed)
+            await cacheProduct(q, isBarcode, enriched)
+            return res.status(200).json({ ...enriched, _source: 'open_products_facts' })
+          }
+          // Even if no product_name, try to extract brand
+          if (!upcBrand && opfData?.product?.brands) {
+            upcBrand = opfData.product.brands.split(',')[0].trim()
+            upcSource = 'open_products_facts'
+          }
+        }
+      } catch (e) {
+        console.warn('[scan] Open Products Facts failed:', e.message)
+      }
+    }
+
+    // 2c: Open Food Facts fallback (some clothing items end up here)
+    if (!upcBrand && !upcProductName) {
+      try {
+        const offRes = await fetch(
+          `https://world.openfoodfacts.org/api/v2/product/${q}.json`,
+          { headers: { 'User-Agent': 'CleanWear/1.0 (cleanwear.app)' } }
+        )
+        if (offRes.ok) {
+          const offData = await offRes.json()
+          if (offData?.product?.brands) {
+            upcBrand = offData.product.brands.split(',')[0].trim()
+            upcProductName = offData.product.product_name || null
+            upcSource = 'open_food_facts'
+            console.log('[scan] Open Food Facts brand hit:', upcBrand)
+          }
+        }
+      } catch (e) {
+        console.warn('[scan] Open Food Facts failed:', e.message)
+      }
     }
   }
 
-  if (opfResult) {
-    const enriched = enrichWithChemicals(opfResult)
+  // ========================================
+  // LAYER 3: If UPC resolved a full product, return it with chemical enrichment
+  // ========================================
+  if (upcProductName && upcBrand) {
+    const category = inferCategory(upcProductName, upcCategory)
+    const materials = inferMaterials(upcProductName, category)
+    const result = {
+      product_name: upcProductName,
+      brand: upcBrand,
+      category,
+      materials,
+      chemicals: [],
+      certifications: [],
+      origin: 'Unknown',
+      health_notes: `Product identified via barcode lookup (${upcSource}). Chemical analysis based on inferred material composition.`,
+      alternatives: [],
+      _upc_source: upcSource,
+    }
+    const enriched = enrichWithChemicals(result)
     await cacheProduct(q, isBarcode, enriched)
-    return res.status(200).json({ ...enriched, _source: 'open_products_facts' })
+    return res.status(200).json({ ...enriched, _source: upcSource })
   }
 
   // ========================================
-  // LAYER 3: Keyword fallback (Claude AI removed — scores now come from data layer)
+  // LAYER 4: Brand-level fallback — we got a brand but no product details
+  // Surface a brand-level result with a data gap flag so the client-side
+  // scoring engine can still score it using brand safety data (NRDC, Good On You, etc.)
+  // ========================================
+  if (upcBrand) {
+    const category = 'Casual' // conservative default
+    const materials = inferMaterials(upcBrand, category)
+    const result = {
+      product_name: `${upcBrand} Product (UPC: ${q})`,
+      brand: upcBrand,
+      category,
+      materials,
+      chemicals: [],
+      certifications: [],
+      origin: 'Unknown',
+      health_notes: `Brand identified via barcode (${upcSource}). Specific product not in database — showing brand-level safety assessment.`,
+      alternatives: [],
+      _upc_source: upcSource,
+      _brand_level_only: true,  // flag for client to show data gap notice
+    }
+    const enriched = enrichWithChemicals(result)
+    await cacheProduct(q, isBarcode, enriched)
+    console.log('[scan] Brand-level result for UPC:', upcBrand)
+    return res.status(200).json({ ...enriched, _source: 'upc_brand_only' })
+  }
+
+  // ========================================
+  // LAYER 5: Keyword fallback (no barcode match at all)
   // ========================================
   const fb = buildFallback(query, isBarcode)
   await cacheProduct(q, isBarcode, fb)
@@ -231,6 +334,49 @@ function buildFallback(query, isBarcode) {
       { name: 'Hemp Blend Tee', brand: 'prAna', reason: 'Hemp is naturally pest-resistant, requiring minimal pesticides and chemical processing.' },
     ],
   }
+}
+
+// ========================================
+// CATEGORY INFERENCE FROM UPC PRODUCT DATA
+// ========================================
+function inferCategory(productName, upcCategory) {
+  const p = (productName || '').toLowerCase()
+  const c = (upcCategory || '').toLowerCase()
+
+  if (/legging|tight|sports?\s*bra|gym|workout|athletic|running|compression|dri-?fit|heatgear|aero/i.test(p + ' ' + c)) return 'Athletic'
+  if (/jacket|coat|puffer|rain|windbreaker|outerwear|vest|fleece|parka/i.test(p + ' ' + c)) return 'Outerwear'
+  if (/pajama|sleep|lounge|nightgown|robe/i.test(p + ' ' + c)) return 'Sleepwear'
+  if (/underwear|boxer|brief|bra(?!celet)|panty|pantie|thong|intimate/i.test(p + ' ' + c)) return 'Underwear'
+  if (/kid|baby|infant|toddler|child|boy|girl|newborn|onesie/i.test(p + ' ' + c)) return 'Kids'
+  if (/dress\s*shirt|formal|suit|blazer|non-?iron|wrinkle/i.test(p + ' ' + c)) return 'Formal'
+  return 'Casual'
+}
+
+// ========================================
+// MATERIAL INFERENCE FROM PRODUCT/BRAND NAME
+// ========================================
+function inferMaterials(text, category) {
+  const t = (text || '').toLowerCase()
+  const materials = []
+
+  if (/organic\s*cotton/.test(t)) materials.push({ name: 'Organic Cotton', percentage: 95 }, { name: 'Spandex', percentage: 5 })
+  else if (/merino|wool/.test(t)) materials.push({ name: 'Merino Wool', percentage: 100 })
+  else if (/linen|flax/.test(t)) materials.push({ name: 'Linen', percentage: 100 })
+  else if (/hemp/.test(t)) materials.push({ name: 'Hemp', percentage: 55 }, { name: 'Cotton', percentage: 45 })
+  else if (/silk|satin/.test(t)) materials.push({ name: 'Silk', percentage: 100 })
+  else if (/polyester|poly/.test(t) && /spandex|elastane|lycra/.test(t)) materials.push({ name: 'Polyester', percentage: 85 }, { name: 'Elastane', percentage: 15 })
+  else if (/nylon/.test(t) && /spandex|elastane|lycra/.test(t)) materials.push({ name: 'Nylon', percentage: 82 }, { name: 'Elastane', percentage: 18 })
+  else if (/polyester|poly/.test(t)) materials.push({ name: 'Polyester', percentage: 100 })
+  else if (/nylon/.test(t)) materials.push({ name: 'Nylon', percentage: 100 })
+  else if (/cotton/.test(t)) materials.push({ name: 'Cotton', percentage: 100 })
+
+  // If we couldn't infer from text, fall back to category defaults
+  if (materials.length === 0) {
+    if (category === 'Athletic') materials.push({ name: 'Polyester', percentage: 88 }, { name: 'Elastane', percentage: 12 })
+    else materials.push({ name: 'Cotton', percentage: 60 }, { name: 'Polyester', percentage: 35 }, { name: 'Elastane', percentage: 5 })
+  }
+
+  return materials
 }
 
 function extractBrand(q) {

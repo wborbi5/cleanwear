@@ -113,6 +113,12 @@ function calculateScore(pd) {
   const brand = BRAND_BY_NAME[brandKey] || null;
   const v2 = calculateScoreV2(pd, brand);
 
+  // If this is a brand-level-only UPC result, add a data gap note
+  if (v2 && pd._brand_level_only) {
+    v2.gaps.push("Specific product not in database — score reflects brand-level safety data only");
+    v2.hasDataGaps = true;
+  }
+
   return {
     overall: v2 ? v2.score : Math.max(0, Math.min(100, f)),
     materialScore: Math.round(ms), chemicalScore: Math.round(cs), certScore: Math.round(ct), originScore: Math.round(os),

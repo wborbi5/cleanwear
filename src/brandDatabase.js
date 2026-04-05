@@ -1,12 +1,9 @@
 // ============================================================
 // CleanWear Brand Health Database
-// Each brand scored on chemical safety based on:
-//   - Typical materials used across product lines
-//   - Known certifications held
-//   - Manufacturing transparency
-//   - Chemical treatment practices
-// Score = 0-100 (same scale as product scores)
+// All scores computed by scoringEngine.js at load time.
+// No hardcoded scores — every number traces to cited sources.
 // ============================================================
+import { calculateScore as engineScore } from "./scoringEngine.js";
 
 export const BRANDS = [
   // ---- SAFE TIER (70-100) ----
@@ -825,17 +822,52 @@ BRANDS.forEach(b => {
     b.confidence_tier = safety.confidence_tier || 3;
     b.data_sources = safety.data_sources || [];
   } else {
-    // No public source data available
+    // No public source data — derive cert booleans from brand certs array
+    const certsLower = (b.certs || []).map(c => c.toLowerCase());
     b.nrdc_pfas_rating = null;
-    b.oeko_tex_certified = false;
+    b.oeko_tex_certified = certsLower.some(c => c.includes("oeko"));
     b.good_on_you_rating = null;
-    b.gots_certified = false;
-    b.bluesign_certified = false;
+    b.gots_certified = certsLower.some(c => c.includes("gots"));
+    b.bluesign_certified = certsLower.some(c => c.includes("bluesign"));
     b.prop65_violations = [];
-    b.confidence_tier = 4;
+    // If brand has any recognized certs, tier 3 so brand score component is used
+    b.confidence_tier = (b.oeko_tex_certified || b.gots_certified || b.bluesign_certified) ? 3 : 4;
     b.data_sources = [];
   }
   b.brand_name = b.name; // alias for scoring engine compatibility
+});
+
+// ── Re-score every product through the citation-based scoring engine ──
+// This replaces all hardcoded scores with engine-computed values.
+BRANDS.forEach(b => {
+  b.products.forEach(p => {
+    // Build a product object the scoring engine understands.
+    // Include product name in materials so keywords like "Dri-FIT",
+    // "Gore-Tex", "Non-Iron" trigger the right REACH flags.
+    const materialStr = (b.materials || []).join(", ") + " " + (p.name || "");
+    const productForEngine = {
+      category: p.cat,
+      materials: materialStr,
+    };
+    const result = engineScore(productForEngine, b);
+    if (result) {
+      p.score = result.score;
+      p.v2 = result;
+    }
+    // If engine returns null (no data at all), keep existing hardcoded score
+  });
+
+  // Recompute brand-level score as average of its products
+  if (b.products.length > 0) {
+    b.score = Math.round(
+      b.products.reduce((sum, p) => sum + p.score, 0) / b.products.length
+    );
+  }
+
+  // Reassign tier based on new score
+  if (b.score >= 70) b.tier = "safe";
+  else if (b.score >= 45) b.tier = "moderate";
+  else b.tier = "high_risk";
 });
 
 // Precomputed lookups

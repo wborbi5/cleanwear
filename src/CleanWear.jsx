@@ -275,7 +275,14 @@ export default function CleanWearApp() {
     const iv = setInterval(() => { si = Math.min(si + 1, steps.length - 1); setLoadStep(steps[si]); }, 2200);
     try {
       const pd = await researchProduct(q, isBc); clearInterval(iv);
-      setResult(pd); const sc2 = calculateScore(pd); setScore(sc2); navigateToResults();
+      const sc2 = calculateScore(pd);
+      // If the scoring engine found no cited data, show insufficient-data message
+      if (!sc2.v2) {
+        setError("Sorry, there is not enough public information to score this product. Try a more well-known brand or product.");
+        analytics.trackScanFailed(q, "insufficient_data");
+        return;
+      }
+      setResult(pd); setScore(sc2); navigateToResults();
       if (!user) incrementScanCount();
       setHasViewedResult(true);
       analytics.trackScanCompleted(q, sc2.overall, pd.brand, pd.product_name, pd.category);
@@ -327,7 +334,7 @@ export default function CleanWearApp() {
 
   const renderScanner = () => (<>
     <div className="hero"><div className="hero-eyebrow">Textile Safety Intelligence</div><h1>Your Clothes Are <em style={{fontFamily:'var(--sans)'}}>Quietly</em> Hurting You</h1><div className="hero-sub">CleanWear uses published research and regulatory data to reveal the hidden carcinogens, endocrine disruptors, and toxic chemicals in your clothing — so you can protect your body from what you wear every day.</div></div>
-    <div className="problem"><div className="problem-label">The Problem No One Talks About</div><div className="problem-grid"><div className="problem-card"><div className="problem-num" style={{ color: "var(--r4)" }}>120+</div><div className="problem-unit">chemicals absorbed through clothing daily</div></div><div className="problem-card"><div className="problem-num" style={{ color: "var(--o4)" }}>30%</div><div className="problem-unit">testosterone reduction linked to BPA in synthetics</div></div><div className="problem-card"><div className="problem-num" style={{ color: "var(--r4)" }}>80%</div><div className="problem-unit">of human blood samples contain clothing microplastics</div></div><div className="problem-card"><div className="problem-num" style={{ color: "var(--o4)" }}>60%</div><div className="problem-unit">of cotton clothing treated with formaldehyde</div></div><div className="problem-full"><div className="problem-full-icon">{"\ud83e\uddec"}</div><div className="problem-full-text">Every time you sweat in synthetic workout gear, <strong>carcinogens leach directly through your skin</strong> at rates up to 15\u00d7 higher than at rest. Your gym clothes may be the most toxic thing in your routine.</div></div></div></div>
+    <div className="problem"><div className="problem-label">The Problem No One Talks About</div><div className="problem-grid"><div className="problem-card"><div className="problem-num" style={{ color: "var(--r4)" }}>68%</div><div className="problem-unit">of activewear tested positive for PFAS (Mamavation 2022)</div></div><div className="problem-card"><div className="problem-num" style={{ color: "var(--o4)" }}>3,252{"×"}</div><div className="problem-unit">increase in PFAS skin absorption when sweating (Zheng et al. 2025)</div></div><div className="problem-card"><div className="problem-num" style={{ color: "var(--r4)" }}>58%</div><div className="problem-unit">of waterproof jackets showed PFAS presence (Toxic-Free Future 2022)</div></div><div className="problem-card"><div className="problem-num" style={{ color: "var(--o4)" }}>25 ppb</div><div className="problem-unit">new OEKO-TEX 2026 limit for PFAS per compound in textiles</div></div><div className="problem-full"><div className="problem-full-icon">{"\ud83e\uddec"}</div><div className="problem-full-text">A 2025 study found that sweat can increase PFAS dermal transfer from textiles by <strong>up to 3,252 times</strong> compared to dry skin contact. Your workout clothes may carry more chemical exposure risk than you realize.</div></div></div></div>
     <div className="scan-area"><div className="scan-label">Scan Your Clothing</div>
       {showCamera ? (<CameraScanner onResult={(r) => { setShowCamera(false); if (r.type === "barcode") { setQuery(r.value); scanSourceRef.current = "camera"; analytics.trackBarcodeDetected(r.value); doScan(r.value, true); } else { if (!canScan(user)) { setScanLimitOpen(true); return; } setResult(r.value); const sc2 = calculateScore(r.value); setScore(sc2); navigateToResults(); if (!user) incrementScanCount(); setHasViewedResult(true); analytics.trackScanCompleted(r.value.product_name, sc2.overall, r.value.brand, r.value.product_name, r.value.category); logScan({ query: r.value.product_name, score: sc2.overall, brand: r.value.brand, product: r.value.product_name, category: r.value.category }); } }} onClose={() => setShowCamera(false)} />) : (<>
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
@@ -396,8 +403,13 @@ export default function CleanWearApp() {
       certifications: product.certifications || [],
       origin: product.origin || "Unknown",
     };
-    setResult(pd);
     const sc2 = calculateScore(pd);
+    if (!sc2.v2) {
+      setError("Sorry, there is not enough public information to score this product.");
+      setLoading(false); setLoadStep("");
+      return;
+    }
+    setResult(pd);
     setScore(sc2);
     navigateToResults();
     if (!user) incrementScanCount();

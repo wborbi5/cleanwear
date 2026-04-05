@@ -274,20 +274,28 @@ function getCategoryGroup(category) {
   return "casual";
 }
 
-// ── Recommendation Engine (type-aware) ──────────────────────────
+// ── Recommendation Engine (type-aware, must be SAFER) ───────────
 function getRecommendations(scannedProduct, allBrands) {
   const targetGroup = getCategoryGroup(scannedProduct.category);
   const scannedName = scannedProduct.product_name || scannedProduct.name || "";
   const targetType = getGarmentType(scannedName);
   const targetTypeGroup = targetType ? getTypeGroup(targetType) : null;
   const scannedBrand = (scannedProduct.brand || "").toLowerCase();
+  const scannedScore = scannedProduct.score || 0;
   const candidates = [];
 
   allBrands.forEach(brand => {
     if (brand.confidence_tier === 4) return;
     if (brand.name.toLowerCase() === scannedBrand) return;
+    // Only recommend from brands that are actually safer
+    if (brand.tier === "high_risk") return;
 
     brand.products?.forEach(p => {
+      // CRITICAL: alternative must score HIGHER than scanned product
+      if ((p.score || 0) <= scannedScore) return;
+      // Minimum score floor — never recommend anything below 60
+      if ((p.score || 0) < 60) return;
+
       const productType = getGarmentType(p.name);
       const productTypeGroup = productType ? getTypeGroup(productType) : null;
       const productCatGroup = getCategoryGroup(p.cat);
@@ -302,6 +310,7 @@ function getRecommendations(scannedProduct, allBrands) {
         candidates.push({
           ...p, brandName: brand.name, brandId: brand.id,
           matchScore,
+          scoreDelta: (p.score || 0) - scannedScore,
           confidence_tier: brand.confidence_tier,
           good_on_you_rating: brand.good_on_you_rating,
           oeko_tex_certified: brand.oeko_tex_certified,
@@ -314,12 +323,9 @@ function getRecommendations(scannedProduct, allBrands) {
     });
   });
 
-  // Sort: type match first, then certified, then score
+  // Sort: type match first, then score (highest first)
   candidates.sort((a, b) => {
     if (a.matchScore !== b.matchScore) return b.matchScore - a.matchScore;
-    const aCert = (a.gots_certified ? 3 : 0) + (a.oeko_tex_certified ? 2 : 0) + (a.bluesign_certified ? 1 : 0);
-    const bCert = (b.gots_certified ? 3 : 0) + (b.oeko_tex_certified ? 2 : 0) + (b.bluesign_certified ? 1 : 0);
-    if (aCert !== bCert) return bCert - aCert;
     return (b.score || 0) - (a.score || 0);
   });
 
@@ -349,6 +355,7 @@ function getRecommendations(scannedProduct, allBrands) {
       reason: reasons.slice(0, 2).join(". "),
       confidence_tier: rec.confidence_tier,
       typeLabel,
+      scoreDelta: rec.scoreDelta,
     };
   });
 }
@@ -656,7 +663,7 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                     <div>
                       <div style={{ fontSize: 15, fontWeight: 700, color: "#e8e8e8" }}>{alt.name}</div>
-                      <div style={{ fontSize: 12, color: "#71717a" }}>{alt.brand}{alt.typeLabel ? ` \u00b7 ${alt.typeLabel}` : ""}</div>
+                      <div style={{ fontSize: 12, color: "#71717a" }}>{alt.brand}{alt.typeLabel ? ` \u00b7 ${alt.typeLabel}` : ""}{alt.scoreDelta > 0 ? ` \u00b7 +${alt.scoreDelta} pts` : ""}</div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       {alt.score && <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 900, color: altSc.text }}>{alt.score}</div>}

@@ -100,83 +100,82 @@ const SKIN_OPTIONS = [
   { value: "child", label: "Child's skin", permeabilityMultiplier: 2.0 },
 ];
 
-// ── Tangible Equivalents (sourced) ──────────────────────────────
-// EPA PFAS drinking water limit: 4 ppt (parts per trillion) = 0.000004 ppm
-// OEKO-TEX 2026 PFAS limit: 25 ppb = 0.025 ppm per compound
-// One polyester shirt sheds ~1,900 microplastic fibers/wash (Env. Sci. & Tech. 2023)
-// Average adult drinks ~2L water/day = 730L/year
-function getExposureStatement(basePpm, activityOpt, frequencyOpt, skinOpt, garmentChemicals) {
-  const transferFactor = activityOpt.multiplier * skinOpt.permeabilityMultiplier;
-  const perWearPpb = basePpm * transferFactor; // estimated ppb transfer per wear
-  const annualPpb = perWearPpb * frequencyOpt.wearsPerYear;
+// ── Exposure Risk Calculator (visual, reactive) ────────────────
+function getExposureRisk(productScore, activityValue, frequencyValue, skinValue) {
+  const actW = { casual: 1, workout: 10, outdoor: 3, sleep: 2 };
+  const freqW = { occasional: 1, weekly: 3, daily: 5 };
+  const skinW = { normal: 1, sensitive: 1.5, child: 2 };
+  const mult = actW[activityValue] * freqW[frequencyValue] * skinW[skinValue];
+  const baseRisk = (100 - productScore) / 100;
+  const amp = Math.log(mult + 1) / Math.log(101);
+  const idx = Math.round(baseRisk * (0.15 + 0.85 * amp) * 100);
+  return Math.max(1, Math.min(idx, 99));
+}
 
-  const hasPFAS = garmentChemicals.includes("pfas");
-  const hasMicroplastics = garmentChemicals.includes("microplastics");
-  const hasFormaldehyde = garmentChemicals.includes("formaldehyde");
-  const hasBPA = garmentChemicals.includes("bpa");
+function getExposureLabel(index) {
+  if (index >= 70) return { label: "HIGH EXPOSURE", color: "#f87171", bg: "rgba(248,113,113,0.10)" };
+  if (index >= 45) return { label: "MODERATE EXPOSURE", color: "#c9a84c", bg: "rgba(201,168,76,0.08)" };
+  if (index >= 20) return { label: "LOW-MODERATE", color: "#a1a1aa", bg: "rgba(161,161,170,0.06)" };
+  return { label: "LOW EXPOSURE", color: "#4ade80", bg: "rgba(74,222,128,0.06)" };
+}
 
-  const statements = [];
+function getExposureBullets(garmentChemicals, activityValue) {
+  const bullets = [];
+  const isWorkout = activityValue === "workout";
+  const isActive = isWorkout || activityValue === "outdoor";
 
-  // PFAS comparison — EPA limit is 4 ppt in drinking water
-  if (hasPFAS) {
-    const pfasPerWear = Math.round(basePpm * 0.4 * transferFactor); // ~40% of measured fluorine is PFAS
-    const epaGlasses = Math.round(pfasPerWear / 0.001); // 4 ppt = 0.001 ppb per 250ml glass
-    if (epaGlasses > 1) {
-      statements.push({
-        headline: `~${epaGlasses.toLocaleString()} glasses of water`,
-        detail: `Each wear at this activity level may transfer PFAS equivalent to drinking ~${epaGlasses.toLocaleString()} glasses of water at the EPA's 4 ppt limit`,
-        source: "EPA PFAS drinking water standard (2024) + Zheng et al. sweat amplification (2025)",
-        severity: epaGlasses > 500 ? "high" : epaGlasses > 50 ? "medium" : "low",
-      });
-    }
+  if (garmentChemicals.includes("pfas")) {
+    bullets.push({
+      text: isWorkout
+        ? "Sweat amplifies PFAS dermal absorption up to 3,252\u00d7 vs dry contact \u2014 the highest-risk scenario for this fabric."
+        : isActive
+        ? "Moisture increases PFAS skin absorption ~8\u00d7 above dry baseline."
+        : activityValue === "sleep"
+        ? "Prolonged skin contact (~8 hrs) increases cumulative PFAS transfer even at low sweat levels."
+        : "PFAS transfers through skin at baseline rate during dry wear. Lower risk than active use.",
+      source: "Zheng et al. (2025)",
+    });
   }
-
-  // Microplastic comparison
-  if (hasMicroplastics) {
-    const fibersPerWear = activityOpt.value === "workout" ? 3800 : activityOpt.value === "outdoor" ? 2400 : 1900;
-    const annualFibers = fibersPerWear * frequencyOpt.wearsPerYear;
-    statements.push({
-      headline: `~${fibersPerWear.toLocaleString()} microplastic fibers per wear`,
-      detail: `Friction ${activityOpt.value === "workout" ? "during exercise" : "during normal wear"} releases synthetic fibers that can be absorbed through skin. That's ~${Math.round(annualFibers / 1000)}k fibers/year at this frequency`,
+  if (garmentChemicals.includes("microplastics")) {
+    const fibers = isWorkout ? "~3,800" : isActive ? "~2,400" : "~1,900";
+    bullets.push({
+      text: `${fibers} microplastic fibers shed per wear from friction${isWorkout ? " during exercise" : ""}. Found in human blood and lung tissue.`,
       source: "Environmental Science & Technology (2023)",
-      severity: annualFibers > 500000 ? "high" : annualFibers > 100000 ? "medium" : "low",
     });
   }
-
-  // BPA comparison
-  if (hasBPA && activityOpt.value === "workout") {
-    statements.push({
-      headline: "15x faster BPA leaching during exercise",
-      detail: "When skin temperature exceeds 37°C, BPA leaches from polyester at 15x the rate of normal wear. Published research links elevated BPA to hormonal disruption",
+  if (garmentChemicals.includes("bpa")) {
+    bullets.push({
+      text: isWorkout
+        ? "BPA leaches from polyester 15\u00d7 faster when skin exceeds 37\u00b0C during exercise."
+        : "BPA present in polyester. Leaching rate increases with body heat.",
       source: "Journal of Dermatological Science",
-      severity: "high",
     });
   }
-
-  // Formaldehyde comparison
-  if (hasFormaldehyde) {
-    const formaldehydeNote = activityOpt.value === "workout" || activityOpt.value === "outdoor"
-      ? "Heat and sweat increase off-gassing of formaldehyde resins from wrinkle-resistant treatments"
-      : "Formaldehyde resins used in wrinkle-resistant treatments off-gas at baseline levels during normal wear";
-    statements.push({
-      headline: activityOpt.value === "workout" ? "Increased formaldehyde off-gassing" : "Formaldehyde present in treatment",
-      detail: formaldehydeNote + ". Classified as a known carcinogen (IARC Group 1)",
-      source: "IARC Monograph Vol. 100F + OEKO-TEX Standard 100",
-      severity: activityOpt.value === "workout" ? "high" : "medium",
+  if (garmentChemicals.includes("formaldehyde")) {
+    bullets.push({
+      text: isActive
+        ? "Heat and sweat increase formaldehyde off-gassing from wrinkle-resistant treatment. Known carcinogen (IARC Group 1)."
+        : "Formaldehyde resins off-gas at baseline levels. Known carcinogen (IARC Group 1).",
+      source: "IARC Monograph Vol. 100F",
     });
   }
-
-  // Generic fallback if no specific chemicals
-  if (statements.length === 0) {
-    statements.push({
-      headline: `${Math.round(transferFactor)}x baseline dermal transfer`,
-      detail: `Based on this activity and skin type, chemical transfer from fabric to skin is estimated at ${Math.round(transferFactor)}x the resting baseline`,
-      source: "Zheng et al. (2025) — sweat-amplified dermal transfer",
-      severity: transferFactor > 100 ? "high" : transferFactor > 5 ? "medium" : "low",
+  if (garmentChemicals.includes("antimony")) {
+    bullets.push({
+      text: isActive
+        ? "Antimony trioxide leaching increases above 37\u00b0C skin temperature during activity."
+        : "Antimony trioxide present from polyester manufacturing. Low leaching at rest.",
+      source: "OEKO-TEX Research",
     });
   }
-
-  return statements;
+  if (garmentChemicals.includes("phthalates")) {
+    bullets.push({
+      text: isActive
+        ? "Phthalates migrate faster from warm, moist fabrics. Linked to endocrine disruption."
+        : "Phthalates present in elastic/synthetic components. Migrate slowly at normal temps.",
+      source: "REACH Annex XVII Entry 51",
+    });
+  }
+  return bullets.slice(0, 3);
 }
 
 // ── Confidence Labels (human-friendly) ──────────────────────────
@@ -219,6 +218,44 @@ function getGarmentChemicals(product) {
   return [...new Set(found)];
 }
 
+// ── Garment Type Inference (for precise alternatives) ──────────
+function getGarmentType(productName) {
+  const n = (productName || "").toLowerCase();
+  if (/\b(tee|t-shirt|crew\s*(neck)?|tank|henley)\b/.test(n) && !/dress/.test(n)) return "tee";
+  if (/\b(polo)\b/.test(n)) return "tee";
+  if (/\b(hoodie|sweatshirt|pullover)\b/.test(n)) return "hoodie";
+  if (/\b(shirt|button|oxford|camp)\b/.test(n) && !/t-shirt/.test(n)) return "shirt";
+  if (/\b(leggings?|tights?|compression\s*(tights?|pants?))\b/.test(n)) return "leggings";
+  if (/\b(shorts?)\b/.test(n)) return "shorts";
+  if (/\b(pants?|joggers?|chinos?|trousers?|jeans?|denim)\b/.test(n) && !/shorts/.test(n)) return "pants";
+  if (/\b(jacket|puff|coat|parka|anorak|rain\s*defender)\b/.test(n)) return "jacket";
+  if (/\b(fleece|denali)\b/.test(n)) return "jacket";
+  if (/\b(boxers?|briefs?|trunks?|thongs?|underwear|panty|panties)\b/.test(n)) return "underwear";
+  if (/\b(bras?|bralettes?)\b/.test(n)) return "bra";
+  if (/\b(socks?)\b/.test(n)) return "socks";
+  if (/\b(shoes?|runners?|sneakers?|boots?|dasher)\b/.test(n)) return "shoes";
+  if (/\b(pajamas?|sleep|nightwear)\b/.test(n)) return "sleepwear";
+  if (/\b(dress|skirt)\b/.test(n)) return "dress";
+  if (/\b(onesie|bodysuit|romper)\b/.test(n)) return "onesie";
+  if (/\b(base\s*layer)\b/.test(n)) return "baselayer";
+  if (/\b(set|pack|workout\s*set|activewear\s*set)\b/.test(n)) return "set";
+  return null;
+}
+
+// Broader type groups for fallback matching
+const TYPE_GROUPS = {
+  tops: ["tee", "shirt", "baselayer"],
+  bottoms: ["leggings", "pants", "shorts"],
+  layers: ["jacket", "hoodie"],
+  intimates: ["underwear", "bra"],
+};
+function getTypeGroup(type) {
+  for (const [group, types] of Object.entries(TYPE_GROUPS)) {
+    if (types.includes(type)) return group;
+  }
+  return null;
+}
+
 // ── Category mapping for recommendations ────────────────────────
 const CATEGORY_MAP = {
   athletic: ["athletic", "gym", "sport", "workout", "running", "compression", "activewear"],
@@ -237,9 +274,12 @@ function getCategoryGroup(category) {
   return "casual";
 }
 
-// ── Recommendation Engine ────────────────────────────────────────
+// ── Recommendation Engine (type-aware) ──────────────────────────
 function getRecommendations(scannedProduct, allBrands) {
   const targetGroup = getCategoryGroup(scannedProduct.category);
+  const scannedName = scannedProduct.product_name || scannedProduct.name || "";
+  const targetType = getGarmentType(scannedName);
+  const targetTypeGroup = targetType ? getTypeGroup(targetType) : null;
   const scannedBrand = (scannedProduct.brand || "").toLowerCase();
   const candidates = [];
 
@@ -248,10 +288,20 @@ function getRecommendations(scannedProduct, allBrands) {
     if (brand.name.toLowerCase() === scannedBrand) return;
 
     brand.products?.forEach(p => {
-      const productGroup = getCategoryGroup(p.cat);
-      if (productGroup === targetGroup) {
+      const productType = getGarmentType(p.name);
+      const productTypeGroup = productType ? getTypeGroup(productType) : null;
+      const productCatGroup = getCategoryGroup(p.cat);
+
+      // Match priority: exact type > type group > category
+      let matchScore = 0;
+      if (targetType && productType && targetType === productType) matchScore = 3;
+      else if (targetTypeGroup && productTypeGroup && targetTypeGroup === productTypeGroup) matchScore = 2;
+      else if (productCatGroup === targetGroup) matchScore = 1;
+
+      if (matchScore > 0) {
         candidates.push({
           ...p, brandName: brand.name, brandId: brand.id,
+          matchScore,
           confidence_tier: brand.confidence_tier,
           good_on_you_rating: brand.good_on_you_rating,
           oeko_tex_certified: brand.oeko_tex_certified,
@@ -264,8 +314,9 @@ function getRecommendations(scannedProduct, allBrands) {
     });
   });
 
-  // Sort: certified first, then score
+  // Sort: type match first, then certified, then score
   candidates.sort((a, b) => {
+    if (a.matchScore !== b.matchScore) return b.matchScore - a.matchScore;
     const aCert = (a.gots_certified ? 3 : 0) + (a.oeko_tex_certified ? 2 : 0) + (a.bluesign_certified ? 1 : 0);
     const bCert = (b.gots_certified ? 3 : 0) + (b.oeko_tex_certified ? 2 : 0) + (b.bluesign_certified ? 1 : 0);
     if (aCert !== bCert) return bCert - aCert;
@@ -273,44 +324,33 @@ function getRecommendations(scannedProduct, allBrands) {
   });
 
   return candidates.slice(0, 3).map(rec => {
-    // Build a specific reason related to scanned product
     const reasons = [];
     const scannedChems = getGarmentChemicals(scannedProduct);
 
-    if (rec.gots_certified) reasons.push("GOTS certified organic — tested for " + (scannedChems.includes("formaldehyde") ? "formaldehyde" : scannedChems.includes("pfas") ? "PFAS" : "harmful substances"));
-    else if (rec.oeko_tex_certified) reasons.push("OEKO-TEX certified — independently tested against " + (scannedChems.length > 0 ? CHEMICAL_INFO[scannedChems[0]]?.name || "chemical limits" : "100+ harmful substances"));
-    else if (rec.bluesign_certified) reasons.push("bluesign approved — chemical management through full supply chain");
+    if (rec.gots_certified) reasons.push("GOTS certified organic \u2014 tested for " + (scannedChems.includes("formaldehyde") ? "formaldehyde" : scannedChems.includes("pfas") ? "PFAS" : "harmful substances"));
+    else if (rec.oeko_tex_certified) reasons.push("OEKO-TEX certified \u2014 independently tested against " + (scannedChems.length > 0 ? CHEMICAL_INFO[scannedChems[0]]?.name || "chemical limits" : "100+ harmful substances"));
+    else if (rec.bluesign_certified) reasons.push("bluesign approved \u2014 chemical management through full supply chain");
 
     if (rec.nrdc_pfas_rating === "A+" || rec.nrdc_pfas_rating === "A") reasons.push(`NRDC PFAS score: ${rec.nrdc_pfas_rating}`);
     if (rec.good_on_you_rating === "great") reasons.push("Good On You 'Great' rating");
 
-    // Material comparison
     const matStr = (rec.brandMaterials || []).join(", ").toLowerCase();
-    if (matStr.includes("organic")) reasons.push("Uses organic fibers — lower chemical treatment");
-    else if (matStr.includes("merino") || matStr.includes("wool")) reasons.push("Natural fiber — no antimony or BPA concerns");
-    else if (matStr.includes("hemp")) reasons.push("Hemp-based — naturally pest-resistant, minimal processing");
+    if (matStr.includes("organic")) reasons.push("Uses organic fibers \u2014 lower chemical treatment");
+    else if (matStr.includes("merino") || matStr.includes("wool")) reasons.push("Natural fiber \u2014 no antimony or BPA concerns");
+    else if (matStr.includes("hemp")) reasons.push("Hemp-based \u2014 naturally pest-resistant, minimal processing");
 
     if (reasons.length === 0) reasons.push("Lower known chemical risk profile in published data");
+
+    // Label the match type for the user
+    const typeLabel = rec.matchScore === 3 ? "Same garment type" : rec.matchScore === 2 ? "Similar garment type" : "Same category";
 
     return {
       name: rec.name, brand: rec.brandName, score: rec.score,
       reason: reasons.slice(0, 2).join(". "),
       confidence_tier: rec.confidence_tier,
+      typeLabel,
     };
   });
-}
-
-// ── Base Concentration by Category ──────────────────────────────
-function getBaseConcentration(category, materials) {
-  const cat = (category || "").toLowerCase();
-  const mat = (materials || []).map(m => (typeof m === "string" ? m : m.name || "").toLowerCase()).join(" ");
-  if (cat.includes("activewear") || cat.includes("athletic") || cat.includes("gym") || cat.includes("sport")) return 120;
-  if (cat.includes("outerwear") || cat.includes("jacket") || cat.includes("waterproof")) return 95;
-  if (cat.includes("underwear") || cat.includes("bra") || cat.includes("intimate")) return 80;
-  if (cat.includes("sleepwear") || cat.includes("pajama") || cat.includes("sleep")) return 60;
-  if (mat.includes("polyester") || mat.includes("nylon")) return 90;
-  if (mat.includes("organic") || mat.includes("linen") || mat.includes("hemp")) return 15;
-  return 50;
 }
 
 // ── Pill Selector ────────────────────────────────────────────────
@@ -356,12 +396,12 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
   // Garment-specific chemicals
   const garmentChemicals = getGarmentChemicals(R);
 
-  // Exposure
-  const activityOpt = ACTIVITY_OPTIONS.find(a => a.value === activity);
-  const frequencyOpt = FREQUENCY_OPTIONS.find(f => f.value === frequency);
-  const skinOpt = SKIN_OPTIONS.find(s => s.value === skin);
-  const basePpm = getBaseConcentration(R.category, R.materials);
-  const exposureStatements = getExposureStatement(basePpm, activityOpt, frequencyOpt, skinOpt, garmentChemicals);
+  // Exposure risk
+  const riskIndex = getExposureRisk(ov, activity, frequency, skin);
+  const riskLabel = getExposureLabel(riskIndex);
+  const organicRisk = getExposureRisk(92, activity, frequency, skin);
+  const vsOrganic = Math.max(1, Math.round(riskIndex / Math.max(organicRisk, 1)));
+  const exposureBullets = getExposureBullets(garmentChemicals, activity);
 
   // Recommendations
   const recommendations = getRecommendations(R, BRANDS);
@@ -533,7 +573,7 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
         {garmentChemicals.length > 0 && (
           <div style={card}>
             <h3 style={heading}>What Does Wearing This Actually Mean?</h3>
-            <p style={sub}>Select how you'll use this garment. We'll estimate exposure using published research — not guesswork.</p>
+            <p style={sub}>Select how you'll use this garment. The exposure level updates in real time.</p>
 
             {/* Selectors */}
             <div style={{ marginBottom: 16 }}>
@@ -544,34 +584,50 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#71717a", marginBottom: 8 }}>Frequency</div>
               <PillRow options={FREQUENCY_OPTIONS} value={frequency} onChange={setFrequency} />
             </div>
-            <div style={{ marginBottom: 24 }}>
+            <div style={{ marginBottom: 28 }}>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#71717a", marginBottom: 8 }}>Skin Type</div>
               <PillRow options={SKIN_OPTIONS} value={skin} onChange={setSkin} />
             </div>
 
-            {/* Tangible results that change with selections */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {exposureStatements.map((stmt, i) => {
-                const colors = { high: { bg: "rgba(248,113,113,0.08)", border: "rgba(248,113,113,0.15)", accent: "#f87171" }, medium: { bg: "rgba(201,168,76,0.08)", border: "rgba(201,168,76,0.15)", accent: "#c9a84c" }, low: { bg: "rgba(74,222,128,0.06)", border: "rgba(74,222,128,0.12)", accent: "#4ade80" } };
-                const c = colors[stmt.severity] || colors.medium;
-                return (
-                  <div key={i} style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 14, padding: 18 }}>
-                    <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 900, color: c.accent, marginBottom: 8 }}>
-                      {stmt.headline}
-                    </div>
-                    <div style={{ fontSize: 13, color: "#e8e8e8", lineHeight: 1.6, marginBottom: 8 }}>
-                      {stmt.detail}
-                    </div>
-                    <div style={{ fontSize: 11, color: "#71717a", lineHeight: 1.4 }}>
-                      Source: {stmt.source}
-                    </div>
-                  </div>
-                );
-              })}
+            {/* Risk Gauge */}
+            <div style={{ background: riskLabel.bg, border: `1px solid ${riskLabel.color}30`, borderRadius: 16, padding: 20, marginBottom: 20, transition: "all 0.4s ease" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 14 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#71717a", marginBottom: 4 }}>Exposure Level</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: riskLabel.color, letterSpacing: 1 }}>{riskLabel.label}</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 48, fontWeight: 900, color: riskLabel.color, lineHeight: 1, transition: "color 0.4s ease" }}>{riskIndex}</div>
+                  <div style={{ fontSize: 11, color: "#52525b", marginTop: 2 }}>out of 99</div>
+                </div>
+              </div>
+              <div style={{ height: 10, borderRadius: 5, background: "rgba(255,255,255,0.06)", overflow: "hidden", marginBottom: 12 }}>
+                <div style={{ height: "100%", borderRadius: 5, width: `${riskIndex}%`, background: `linear-gradient(90deg, #4ade80, ${riskLabel.color})`, transition: "width 0.6s cubic-bezier(0.16,1,0.3,1), background 0.4s ease", boxShadow: `0 0 12px ${riskLabel.color}40` }} />
+              </div>
+              {vsOrganic > 1 && (
+                <div style={{ fontSize: 13, color: "#a1a1aa", lineHeight: 1.5 }}>
+                  <span style={{ fontWeight: 700, color: riskLabel.color }}>{vsOrganic}\u00d7</span> more chemical exposure than an organic cotton equivalent at this usage level
+                </div>
+              )}
             </div>
 
-            <div style={{ fontSize: 12, color: "#a1a1aa", marginTop: 20, lineHeight: 1.6, padding: "14px 16px", background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
-              <strong style={{ color: "#e8e8e8" }}>Important:</strong> These are estimates based on published research, not direct measurements of this specific product. Actual chemical concentrations vary by manufacturer, fabric treatment, and production batch. We present this data so you can make more informed decisions — not to make definitive health claims.
+            {/* Chemical-specific bullets that change with activity */}
+            {exposureBullets.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 20 }}>
+                {exposureBullets.map((b, i) => (
+                  <div key={`${activity}-${i}`} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: riskLabel.color, marginTop: 7, flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontSize: 13, color: "#e8e8e8", lineHeight: 1.6 }}>{b.text}</div>
+                      <div style={{ fontSize: 11, color: "#52525b", marginTop: 3 }}>{b.source}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ fontSize: 12, color: "#a1a1aa", lineHeight: 1.6, padding: "14px 16px", background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)" }}>
+              <strong style={{ color: "#e8e8e8" }}>Important:</strong> These are estimates based on published research, not direct measurements of this product. Actual levels vary by manufacturer and batch.
             </div>
           </div>
         )}
@@ -581,24 +637,29 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
           <div style={card}>
             <h3 style={heading}>Safer Alternatives</h3>
             <p style={sub}>
-              {getCategoryGroup(R.category) === "athletic" ? "Athletic wear" :
-               getCategoryGroup(R.category) === "outerwear" ? "Outerwear" :
-               getCategoryGroup(R.category) === "underwear" ? "Underwear" :
-               getCategoryGroup(R.category) === "sleepwear" ? "Sleepwear" :
-               getCategoryGroup(R.category) === "kids" ? "Kids' clothing" :
-               "Casual wear"} with lower known chemical risk, based on brand certifications and published data.
+              {(() => {
+                const t = getGarmentType(R.product_name || "");
+                if (t) return `Safer ${t === "tee" ? "tees" : t === "shirt" ? "shirts" : t === "leggings" ? "leggings" : t === "shorts" ? "shorts" : t === "pants" || t === "jeans" ? "pants" : t === "jacket" ? "jackets" : t === "hoodie" ? "hoodies" : t === "underwear" ? "underwear" : t === "bra" ? "bras" : t === "shoes" ? "shoes" : t + "s"} with lower chemical risk, based on certifications and published data.`;
+                return getCategoryGroup(R.category) === "athletic" ? "Athletic wear" :
+                       getCategoryGroup(R.category) === "outerwear" ? "Outerwear" :
+                       getCategoryGroup(R.category) === "underwear" ? "Underwear" :
+                       getCategoryGroup(R.category) === "sleepwear" ? "Sleepwear" :
+                       getCategoryGroup(R.category) === "kids" ? "Kids' clothing" :
+                       "Casual wear";
+              })() + (getGarmentType(R.product_name || "") ? "" : " with lower known chemical risk, based on certifications and published data.")}
             </p>
             {alts.map((alt, i) => {
               const altConf = CONFIDENCE[alt.confidence_tier || 3];
+              const altSc = scoreColor(alt.score || 70);
               return (
                 <div key={i} onClick={() => onScanAlternative?.(alt.name ? `${alt.brand} ${alt.name}` : alt.brand)} style={{ background: "rgba(74,222,128,0.03)", border: "1px solid rgba(74,222,128,0.1)", borderRadius: 16, padding: 16, marginBottom: i < alts.length - 1 ? 10 : 0, cursor: onScanAlternative ? "pointer" : "default", transition: "all .2s" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                     <div>
                       <div style={{ fontSize: 15, fontWeight: 700, color: "#e8e8e8" }}>{alt.name}</div>
-                      <div style={{ fontSize: 12, color: "#71717a" }}>{alt.brand}</div>
+                      <div style={{ fontSize: 12, color: "#71717a" }}>{alt.brand}{alt.typeLabel ? ` \u00b7 ${alt.typeLabel}` : ""}</div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      {alt.score && <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 900, color: "#4ade80" }}>{alt.score}</div>}
+                      {alt.score && <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 900, color: altSc.text }}>{alt.score}</div>}
                       {alt.confidence_tier && (
                         <div style={{ width: 8, height: 8, borderRadius: "50%", background: altConf.color }} title={altConf.label} />
                       )}

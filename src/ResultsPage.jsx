@@ -127,9 +127,9 @@ function getExposureBullets(garmentChemicals, activityValue) {
   if (garmentChemicals.includes("pfas")) {
     bullets.push({
       text: isWorkout
-        ? "Sweat amplifies PFAS dermal absorption up to 3,252\u00d7 vs dry contact \u2014 the highest-risk scenario for this fabric."
+        ? "Sweat amplifies PFAS dermal absorption up to 3,252x vs dry contact — the highest-risk scenario for this fabric."
         : isActive
-        ? "Moisture increases PFAS skin absorption ~8\u00d7 above dry baseline."
+        ? "Moisture increases PFAS skin absorption ~8x above dry baseline."
         : activityValue === "sleep"
         ? "Prolonged skin contact (~8 hrs) increases cumulative PFAS transfer even at low sweat levels."
         : "PFAS transfers through skin at baseline rate during dry wear. Lower risk than active use.",
@@ -146,7 +146,7 @@ function getExposureBullets(garmentChemicals, activityValue) {
   if (garmentChemicals.includes("bpa")) {
     bullets.push({
       text: isWorkout
-        ? "BPA leaches from polyester 15\u00d7 faster when skin exceeds 37\u00b0C during exercise."
+        ? "BPA leaches from polyester 15x faster when skin exceeds 37°C during exercise."
         : "BPA present in polyester. Leaching rate increases with body heat.",
       source: "Journal of Dermatological Science",
     });
@@ -162,7 +162,7 @@ function getExposureBullets(garmentChemicals, activityValue) {
   if (garmentChemicals.includes("antimony")) {
     bullets.push({
       text: isActive
-        ? "Antimony trioxide leaching increases above 37\u00b0C skin temperature during activity."
+        ? "Antimony trioxide leaching increases above 37°C skin temperature during activity."
         : "Antimony trioxide present from polyester manufacturing. Low leaching at rest.",
       source: "OEKO-TEX Research",
     });
@@ -333,17 +333,17 @@ function getRecommendations(scannedProduct, allBrands) {
     const reasons = [];
     const scannedChems = getGarmentChemicals(scannedProduct);
 
-    if (rec.gots_certified) reasons.push("GOTS certified organic \u2014 tested for " + (scannedChems.includes("formaldehyde") ? "formaldehyde" : scannedChems.includes("pfas") ? "PFAS" : "harmful substances"));
-    else if (rec.oeko_tex_certified) reasons.push("OEKO-TEX certified \u2014 independently tested against " + (scannedChems.length > 0 ? CHEMICAL_INFO[scannedChems[0]]?.name || "chemical limits" : "100+ harmful substances"));
-    else if (rec.bluesign_certified) reasons.push("bluesign approved \u2014 chemical management through full supply chain");
+    if (rec.gots_certified) reasons.push("GOTS certified organic — tested for " + (scannedChems.includes("formaldehyde") ? "formaldehyde" : scannedChems.includes("pfas") ? "PFAS" : "harmful substances"));
+    else if (rec.oeko_tex_certified) reasons.push("OEKO-TEX certified — independently tested against " + (scannedChems.length > 0 ? CHEMICAL_INFO[scannedChems[0]]?.name || "chemical limits" : "100+ harmful substances"));
+    else if (rec.bluesign_certified) reasons.push("bluesign approved — chemical management through full supply chain");
 
     if (rec.nrdc_pfas_rating === "A+" || rec.nrdc_pfas_rating === "A") reasons.push(`NRDC PFAS score: ${rec.nrdc_pfas_rating}`);
     if (rec.good_on_you_rating === "great") reasons.push("Good On You 'Great' rating");
 
     const matStr = (rec.brandMaterials || []).join(", ").toLowerCase();
-    if (matStr.includes("organic")) reasons.push("Uses organic fibers \u2014 lower chemical treatment");
-    else if (matStr.includes("merino") || matStr.includes("wool")) reasons.push("Natural fiber \u2014 no antimony or BPA concerns");
-    else if (matStr.includes("hemp")) reasons.push("Hemp-based \u2014 naturally pest-resistant, minimal processing");
+    if (matStr.includes("organic")) reasons.push("Uses organic fibers — lower chemical treatment");
+    else if (matStr.includes("merino") || matStr.includes("wool")) reasons.push("Natural fiber — no antimony or BPA concerns");
+    else if (matStr.includes("hemp")) reasons.push("Hemp-based — naturally pest-resistant, minimal processing");
 
     if (reasons.length === 0) reasons.push("Lower known chemical risk profile in published data");
 
@@ -628,7 +628,7 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
               </div>
               {vsOrganic > 1 && (
                 <div style={{ fontSize: 13, color: "#a1a1aa", lineHeight: 1.5 }}>
-                  <span style={{ fontWeight: 700, color: riskLabel.color }}>{vsOrganic}\u00d7</span> more chemical exposure than an organic cotton equivalent at this usage level
+                  <span style={{ fontWeight: 700, color: riskLabel.color }}>{vsOrganic}x</span> more chemical exposure than an organic cotton equivalent at this usage level
                 </div>
               )}
             </div>
@@ -678,7 +678,7 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                     <div>
                       <div style={{ fontSize: 15, fontWeight: 700, color: "#e8e8e8" }}>{alt.name}</div>
-                      <div style={{ fontSize: 12, color: "#71717a" }}>{alt.brand}{alt.typeLabel ? ` \u00b7 ${alt.typeLabel}` : ""}{alt.scoreDelta > 0 ? ` \u00b7 +${alt.scoreDelta} pts` : ""}</div>
+                      <div style={{ fontSize: 12, color: "#71717a" }}>{alt.brand}{alt.typeLabel ? ` · ${alt.typeLabel}` : ""}{alt.scoreDelta > 0 ? ` · +${alt.scoreDelta} pts` : ""}</div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       {alt.score && <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 900, color: altSc.text }}>{alt.score}</div>}

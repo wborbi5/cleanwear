@@ -246,8 +246,7 @@ function ScanDemo() {
 export default function LandingPage({ onLaunchApp }) {
   const [scrolled, setScrolled] = useState(false);
   const [demoQuery, setDemoQuery] = useState("");
-  const [demoLoading, setDemoLoading] = useState(false);
-  const [demoResult, setDemoResult] = useState(null);
+  const [demoLoading] = useState(false);
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 30);
@@ -255,38 +254,12 @@ export default function LandingPage({ onLaunchApp }) {
     return () => window.removeEventListener("scroll", fn);
   }, []);
 
-  const handleDemo = async () => {
-    if (!demoQuery.trim() || demoLoading) return;
-    setDemoLoading(true);
-    setDemoResult(null);
-    try {
-      const res = await fetch("/api/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: demoQuery }),
-      });
-      const data = await res.json();
-      let score = 70;
-      (data.chemicals || []).forEach((c) => {
-        if (["bpa", "pfas", "formaldehyde"].includes(c)) score -= 15;
-        else if (["antimony", "phthalates", "azo_dyes", "heavy_metals"].includes(c)) score -= 10;
-        else score -= 5;
-      });
-      (data.materials || []).forEach((m) => {
-        const n = (m.name || "").toLowerCase();
-        if (n.includes("organic") || n.includes("hemp") || n.includes("linen")) score += 8;
-        if (n.includes("polyester") || n.includes("nylon") || n.includes("acrylic")) score -= 8;
-      });
-      score = Math.max(5, Math.min(98, score));
-      setDemoResult({ ...data, _score: score });
-    } catch {
-      setDemoResult({ product_name: demoQuery, brand: "Unknown", _score: 45, chemicals: ["formaldehyde", "microplastics"], _error: true });
-    }
-    setDemoLoading(false);
+  const handleDemo = () => {
+    if (!demoQuery.trim()) return;
+    // Route directly into the app with query pre-loaded — uses the real scoring engine
+    sessionStorage.setItem("cw_demo_query", demoQuery.trim());
+    window.location.hash = "#app";
   };
-
-  const demoScoreColor = (s) => s >= 70 ? "#22c55e" : s >= 40 ? "#eab308" : "#ef4444";
-  const demoScoreLabel = (s) => s >= 70 ? "Good" : s >= 40 ? "Mediocre" : "Bad";
 
   const F = "'Plus Jakarta Sans',sans-serif";
   const S = "'Playfair Display',serif";
@@ -496,7 +469,7 @@ export default function LandingPage({ onLaunchApp }) {
             {["Nike Dri-FIT Tee", "Lululemon Align Leggings", "Patagonia Organic Tee"].map((item) => (
               <button
                 key={item}
-                onClick={() => { setDemoQuery(item); }}
+                onClick={() => { sessionStorage.setItem("cw_demo_query", item); window.location.hash = "#app"; }}
                 style={{
                   padding: "6px 14px", background: "#fff",
                   border: "1px solid #d4e4d0", borderRadius: 20,
@@ -509,51 +482,7 @@ export default function LandingPage({ onLaunchApp }) {
             ))}
           </div>
 
-          {/* Result */}
-          {demoResult && (
-            <div style={{
-              background: "#fff", borderRadius: 22, padding: "28px 24px",
-              border: "1px solid #e8e8e4", textAlign: "center",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16, justifyContent: "center" }}>
-                <ScoreCircle score={demoResult._score} size={68} />
-                <div style={{ textAlign: "left" }}>
-                  <div style={{
-                    fontSize: 11, fontWeight: 700, letterSpacing: 0.5,
-                    textTransform: "uppercase", marginBottom: 4,
-                    color: demoScoreColor(demoResult._score),
-                  }}>
-                    {demoScoreLabel(demoResult._score)} · {demoResult._score}/100
-                  </div>
-                  <div style={{ fontSize: 17, fontWeight: 700, color: "#1a1a1a" }}>{demoResult.product_name}</div>
-                  <div style={{ fontSize: 13, color: "#999" }}>{demoResult.brand}</div>
-                </div>
-              </div>
-              {demoResult.chemicals?.length > 0 && (
-                <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap", marginBottom: 16 }}>
-                  {demoResult.chemicals.slice(0, 4).map((c, i) => (
-                    <span key={i} style={{
-                      padding: "4px 10px", background: "#fef2f2",
-                      borderRadius: 6, fontSize: 12, color: "#b91c1c", fontWeight: 500,
-                    }}>
-                      {(typeof c === "string" ? c : c.name || c).replace(/_/g, " ")}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <button
-                onClick={onLaunchApp}
-                style={{
-                  padding: "12px 28px", background: "#16a34a", color: "#fff",
-                  border: "none", borderRadius: 20, fontSize: 14, fontWeight: 700,
-                  fontFamily: F, cursor: "pointer",
-                }}
-              >
-                See full results →
-              </button>
-            </div>
-          )}
+          {/* Results now show in the actual app via routing */}
         </div>
       </section>
 

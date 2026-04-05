@@ -555,8 +555,8 @@ export default function ResultsPage({ result, score, onBack, onAddToWardrobe, on
         {/* ═══ WHAT'S IN THIS GARMENT ═══ */}
         {garmentChemicals.length > 0 && (
           <div style={card}>
-            <h3 style={heading}>What's In This {R.category || "Garment"}</h3>
-            <p style={sub}>Based on the materials ({(R.materials || []).map(m => typeof m === "string" ? m : m.name).join(", ") || "synthetic blend"}), published research associates these chemicals with this type of garment.</p>
+            <h3 style={heading}>Potential Chemical Concerns</h3>
+            <p style={sub}>Based on the declared materials ({(R.materials || []).map(m => typeof m === "string" ? m : m.name).join(", ") || "synthetic blend"}), published research links these chemicals to this type of fabric. We cannot confirm presence without lab testing — these are risk factors, not confirmed findings.</p>
 
             {garmentChemicals.map((chemKey, i) => {
               const chem = CHEMICAL_INFO[chemKey];

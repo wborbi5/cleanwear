@@ -227,6 +227,17 @@ export default function CleanWearApp() {
   }, [user, authLoading]);
   useEffect(() => { if (!user && wardrobe.length > 0) { localStorage.setItem("cw_wardrobe", JSON.stringify(wardrobe)); } if (wardrobe.length > 0) analytics.syncWardrobeProfile(wardrobe); }, [wardrobe, user]);
   useEffect(() => { const i = setInterval(() => setFactIdx(x => (x + 1) % FUN_FACTS.length), 7000); return () => clearInterval(i); }, []);
+
+  // Auto-scan from landing page demo
+  useEffect(() => {
+    const demoQ = sessionStorage.getItem("cw_demo_query");
+    if (demoQ) {
+      sessionStorage.removeItem("cw_demo_query");
+      setQuery(demoQ);
+      scanSourceRef.current = "landing_demo";
+      setTimeout(() => doScan(demoQ), 300);
+    }
+  }, []);
   useEffect(() => { const handlePop = (e) => { const state = e.state; if (state?.view) { setView(state.view); if (state.view !== "results") { setResult(null); setScore(null); } setExpanded(null); } else { setView("scanner"); setResult(null); setScore(null); } }; window.addEventListener("popstate", handlePop); return () => window.removeEventListener("popstate", handlePop); }, []);
 
   // Push history on initial load
@@ -298,12 +309,14 @@ export default function CleanWearApp() {
       const { error: err } = await addToWardrobe({ userId: user.id, productName: result.product_name, brand: result.brand, score: score.overall, category: result.category, scanData: result });
       if (!err) { setWardrobe(p => [item, ...p]); setAdded(true); analytics.trackWardrobeAdd(result.product_name, result.brand, score.overall); }
     } else {
-      // Anonymous: store pending item and prompt auth
-      sessionStorage.setItem("pendingWardrobeSave", JSON.stringify(item));
-      setAuthTrigger("wardrobe_save");
-      setAuthModalOpen(true);
+      // Anonymous: save to localStorage immediately
+      const updated = [item, ...wardrobe];
+      setWardrobe(updated);
+      setAdded(true);
+      try { localStorage.setItem("cw_wardrobe", JSON.stringify(updated)); } catch {}
+      analytics.trackWardrobeAdd(result.product_name, result.brand, score.overall);
     }
-  }, [result, score, user]);
+  }, [result, score, user, wardrobe]);
   const rmWard = useCallback(async (id) => {
     const item = wardrobe.find(i => i.id === id);
     if (item) analytics.trackWardrobeRemove(item.name, item.brand, item.score);

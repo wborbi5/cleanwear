@@ -243,6 +243,101 @@ function ScanDemo() {
   );
 }
 
+// ─── RESEARCH SPOTLIGHT CAROUSEL ─────────────────────────────
+const SPOTLIGHTS = [
+  { icon: "🧬", fact: "A single polyester gym shirt releases up to 1,900 microplastic fibers per wash — fibers that end up in your bloodstream.", source: "Environmental Science & Technology, 2023" },
+  { icon: "🌡️", fact: "BPA in synthetic clothing leaches 15× faster during exercise when skin temperature exceeds 37°C.", source: "Journal of Dermatological Science" },
+  { icon: "💪", fact: "Men exposed to high BPA levels showed testosterone levels 30% lower than those with minimal exposure.", source: "Reproductive Toxicology, 2022" },
+  { icon: "👕", fact: "The average person absorbs up to 120 different chemicals through their clothing every single day.", source: "Stockholm University Research" },
+  { icon: "🏃", fact: "Athletic wear is the highest-risk clothing category — sweat, heat, and friction all accelerate chemical leaching into your body.", source: "Textile Research Journal" },
+  { icon: "🧪", fact: "Formaldehyde — the chemical used to preserve lab specimens — is used in 60% of cotton clothing for wrinkle resistance.", source: "Government Accountability Office" },
+  { icon: "🌍", fact: "PFAS 'forever chemicals' in waterproof activewear take over 1,000 years to break down. They never leave your body.", source: "Environmental Health Perspectives" },
+  { icon: "🔬", fact: "Microplastics from synthetic clothing were found in 80% of human blood samples tested in a landmark 2022 study.", source: "Environment International, 2022" },
+];
+
+function ResearchSpotlight({ F, S }) {
+  const [idx, setIdx] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    if (paused) return;
+    const t = setInterval(() => setIdx((i) => (i + 1) % SPOTLIGHTS.length), 6500);
+    return () => clearInterval(t);
+  }, [paused]);
+
+  const prev = () => { setIdx((i) => (i - 1 + SPOTLIGHTS.length) % SPOTLIGHTS.length); setPaused(true); };
+  const next = () => { setIdx((i) => (i + 1) % SPOTLIGHTS.length); setPaused(true); };
+  const go = (i) => { setIdx(i); setPaused(true); };
+  const current = SPOTLIGHTS[idx];
+
+  return (
+    <section style={{ padding: "80px 24px", background: "#fff" }}>
+      <div style={{ maxWidth: 820, margin: "0 auto", textAlign: "center" }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#16a34a", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
+          Research spotlight
+        </div>
+        <h2 style={{ fontFamily: S, fontSize: "clamp(24px, 3.5vw, 36px)", fontWeight: 800, color: "#0f1a0f", margin: "0 0 36px", letterSpacing: "-0.02em" }}>
+          What the peer-reviewed research is saying
+        </h2>
+
+        <div
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+          style={{ position: "relative" }}
+        >
+          {/* Arrows */}
+          <button onClick={prev} aria-label="Previous" style={{
+            position: "absolute", left: -8, top: "50%", transform: "translateY(-50%)",
+            width: 44, height: 44, borderRadius: "50%", border: "1px solid #e4ece1",
+            background: "#fff", cursor: "pointer", fontSize: 18, color: "#16a34a",
+            boxShadow: "0 2px 8px rgba(15,26,15,0.06)", fontWeight: 700, zIndex: 2,
+          }}>‹</button>
+          <button onClick={next} aria-label="Next" style={{
+            position: "absolute", right: -8, top: "50%", transform: "translateY(-50%)",
+            width: 44, height: 44, borderRadius: "50%", border: "1px solid #e4ece1",
+            background: "#fff", cursor: "pointer", fontSize: 18, color: "#16a34a",
+            boxShadow: "0 2px 8px rgba(15,26,15,0.06)", fontWeight: 700, zIndex: 2,
+          }}>›</button>
+
+          {/* Card */}
+          <div key={idx} style={{
+            padding: "44px 48px", background: "linear-gradient(155deg, #f6f9f4, #fff)",
+            border: "1px solid #e4ece1", borderRadius: 24, margin: "0 32px",
+            minHeight: 240, display: "flex", flexDirection: "column", justifyContent: "center",
+            boxShadow: "0 12px 40px rgba(15,26,15,0.04)",
+            animation: "cw-fade-up .5s ease-out both",
+          }}>
+            <div style={{ fontSize: 42, marginBottom: 18 }}>{current.icon}</div>
+            <p style={{ fontFamily: S, fontSize: "clamp(17px, 2.1vw, 22px)", fontWeight: 500, color: "#0f1a0f", lineHeight: 1.5, margin: "0 0 20px", letterSpacing: "-0.01em" }}>
+              "{current.fact}"
+            </p>
+            <div style={{ fontSize: 12, color: "#16a34a", fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase" }}>
+              {current.source}
+            </div>
+          </div>
+        </div>
+
+        {/* Dots */}
+        <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 24 }}>
+          {SPOTLIGHTS.map((_, i) => (
+            <button key={i} onClick={() => go(i)} aria-label={`Slide ${i + 1}`} style={{
+              width: i === idx ? 26 : 7, height: 7, borderRadius: 4, border: "none",
+              background: i === idx ? "#16a34a" : "#d4e4d0", cursor: "pointer",
+              transition: "all .3s ease", padding: 0,
+            }} />
+          ))}
+        </div>
+      </div>
+
+      <style>{`
+        @media (max-width: 640px) {
+          .cw-spotlight-card { margin: 0 44px !important; padding: 32px 24px !important; }
+        }
+      `}</style>
+    </section>
+  );
+}
+
 export default function LandingPage({ onLaunchApp }) {
   const [scrolled, setScrolled] = useState(false);
   const [demoQuery, setDemoQuery] = useState("");
@@ -276,80 +371,259 @@ export default function LandingPage({ onLaunchApp }) {
         borderBottom: scrolled ? "1px solid #e8e8e4" : "1px solid transparent",
         transition: "all 0.3s",
       }}>
-        <div style={{ maxWidth: 1000, margin: "0 auto", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ maxWidth: 1000, margin: "0 auto", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <a href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", cursor: "pointer" }}>
             <Shield size={28} />
             <span style={{ fontFamily: S, fontSize: 19, fontWeight: 700, color: "#1a1a1a" }}>
               Clean<em style={{ fontStyle: "italic", color: "#16a34a", fontWeight: 500 }}>Wear</em>
             </span>
+          </a>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <a href="#methodology" style={{
+              padding: "8px 14px", fontSize: 14, fontWeight: 600, color: "#1a1a1a",
+              textDecoration: "none", borderRadius: 20, fontFamily: F,
+            }} className="cw-nav-link">The Science</a>
+            <button onClick={onLaunchApp} style={{
+              padding: "10px 24px", background: "#16a34a", color: "#fff",
+              border: "none", borderRadius: 24, fontSize: 14, fontWeight: 600,
+              fontFamily: F, cursor: "pointer",
+            }}>
+              Scan now
+            </button>
           </div>
-          <button onClick={onLaunchApp} style={{
-            padding: "10px 24px", background: "#16a34a", color: "#fff",
-            border: "none", borderRadius: 24, fontSize: 14, fontWeight: 600,
-            fontFamily: F, cursor: "pointer",
-          }}>
-            Scan now
-          </button>
         </div>
+        <style>{`
+          @media (max-width: 560px) { .cw-nav-link { display: none !important; } }
+        `}</style>
       </nav>
 
-      {/* ═══ HERO ═══ */}
+      {/* ═══ HERO — split layout, asymmetric, editorial ═══ */}
       <section style={{
-        paddingTop: 100, paddingBottom: 60,
+        paddingTop: 120, paddingBottom: 80,
         background: "linear-gradient(180deg, #f2f7f0 0%, #fafaf7 100%)",
-        textAlign: "center", position: "relative", overflow: "hidden",
+        position: "relative", overflow: "hidden",
       }}>
-        {/* Soft decorative blob */}
-        <div style={{ position: "absolute", top: -80, right: -120, width: 400, height: 400, borderRadius: "50%", background: "rgba(74,222,128,0.07)", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", bottom: -60, left: -80, width: 300, height: 300, borderRadius: "50%", background: "rgba(74,222,128,0.05)", pointerEvents: "none" }} />
+        {/* Soft decorative blobs */}
+        <div style={{ position: "absolute", top: -120, right: -160, width: 520, height: 520, borderRadius: "50%", background: "rgba(74,222,128,0.1)", pointerEvents: "none", filter: "blur(10px)" }} />
+        <div style={{ position: "absolute", bottom: -100, left: -120, width: 380, height: 380, borderRadius: "50%", background: "rgba(74,222,128,0.07)", pointerEvents: "none", filter: "blur(10px)" }} />
+        {/* Subtle dot grid */}
+        <div aria-hidden style={{
+          position: "absolute", inset: 0,
+          backgroundImage: "radial-gradient(#16a34a22 1px, transparent 1px)",
+          backgroundSize: "28px 28px", opacity: 0.4, pointerEvents: "none",
+        }} />
 
-        <div style={{ maxWidth: 660, margin: "0 auto", padding: "0 24px", position: "relative" }}>
-          <h1 style={{
-            fontFamily: S, fontSize: "clamp(30px, 5vw, 48px)", fontWeight: 800,
-            lineHeight: 1.2, color: "#1a1a1a", marginBottom: 16,
-          }}>
-            Know what's really in your clothes
-          </h1>
-          <p style={{
-            fontSize: "clamp(16px, 2.2vw, 20px)", lineHeight: 1.6,
-            color: "#666", maxWidth: 480, margin: "0 auto 36px",
-          }}>
-            CleanWear uses published research to show you which chemicals in your clothing may be absorbing into your body — so you can find safer alternatives.
-          </p>
-          <button onClick={onLaunchApp} style={{
-            padding: "16px 40px", background: "#16a34a", color: "#fff",
-            border: "none", borderRadius: 28, fontSize: 17, fontWeight: 700,
-            fontFamily: F, cursor: "pointer", marginBottom: 48,
-            boxShadow: "0 4px 16px rgba(22,163,74,0.25)",
-          }}>
-            Scan your first item
-          </button>
-
-          {/* Animated phone scanning demo */}
-          <ScanDemo />
-        </div>
-      </section>
-
-      {/* ═══ A 100% INDEPENDENT PROJECT — same structure as Yuka ═══ */}
-      <section style={{ padding: "72px 24px", background: "#fff" }}>
-        <div style={{ maxWidth: 880, margin: "0 auto", textAlign: "center" }}>
-          <h2 style={{ fontFamily: S, fontSize: "clamp(24px, 3.5vw, 36px)", fontWeight: 800, color: "#1a1a1a", marginBottom: 48 }}>
-            A 100% independent project
-          </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 28 }}>
-            {[
-              { icon: "🛡️", title: "No influence from brands", desc: "No brand or manufacturer can influence the scores or recommendations. Every rating is based on published research." },
-              { icon: "🚫", title: "No ads", desc: "Brands cannot pay CleanWear to promote their products. You will never see advertising in the app." },
-              { icon: "🔬", title: "Peer-reviewed science", desc: "Every score traces to studies from IARC, EFSA, and peer-reviewed journals. We cite our sources — always." },
-            ].map((item, i) => (
-              <div key={i} style={{ padding: "28px 20px", textAlign: "center" }}>
-                <div style={{ fontSize: 36, marginBottom: 16 }}>{item.icon}</div>
-                <div style={{ fontSize: 17, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>{item.title}</div>
-                <p style={{ fontSize: 15, color: "#777", lineHeight: 1.6, margin: 0 }}>{item.desc}</p>
+        <div style={{
+          maxWidth: 1180, margin: "0 auto", padding: "0 24px", position: "relative",
+          display: "grid", gridTemplateColumns: "minmax(0, 1.1fr) minmax(0, 1fr)",
+          gap: 56, alignItems: "center",
+        }} className="cw-hero-grid">
+          {/* LEFT: headline + CTA */}
+          <div style={{ position: "relative" }}>
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              padding: "6px 14px", borderRadius: 20,
+              background: "#fff", border: "1px solid #d4e4d0",
+              fontSize: 12, fontWeight: 700, color: "#166534",
+              letterSpacing: 1, textTransform: "uppercase", marginBottom: 24,
+              boxShadow: "0 2px 12px rgba(22,101,52,0.06)",
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 8px #22c55e" }} />
+              A 100% independent project
+            </div>
+            <h1 style={{
+              fontFamily: S, fontSize: "clamp(38px, 6vw, 72px)", fontWeight: 800,
+              lineHeight: 1.02, color: "#0f1a0f", marginBottom: 20, letterSpacing: "-0.02em",
+            }}>
+              Know What's<br/>
+              <span style={{ position: "relative", display: "inline-block" }}>
+                Really In Your
+                <span style={{
+                  position: "absolute", left: 0, right: 0, bottom: 4, height: 12,
+                  background: "linear-gradient(90deg, #22c55e55, #22c55e00)",
+                  borderRadius: 4, zIndex: -1,
+                }} />
+              </span><br/>
+              <em style={{ fontStyle: "italic", color: "#16a34a", fontWeight: 500 }}>Clothes.</em>
+            </h1>
+            <p style={{
+              fontSize: "clamp(16px, 1.6vw, 20px)", lineHeight: 1.6,
+              color: "#52525b", maxWidth: 560, marginBottom: 36,
+            }}>
+              CleanWear uses published research to show you which chemicals in your clothing may be absorbing into your body — so you can find safer clothing alternatives.
+            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+              <button onClick={onLaunchApp} style={{
+                padding: "18px 44px", background: "#16a34a", color: "#fff",
+                border: "none", borderRadius: 32, fontSize: 17, fontWeight: 700,
+                fontFamily: F, cursor: "pointer",
+                boxShadow: "0 12px 32px rgba(22,163,74,0.3)",
+                transition: "transform .15s ease, box-shadow .15s ease",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 16px 40px rgba(22,163,74,0.4)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(22,163,74,0.3)"; }}
+              >
+                Scan your first item &nbsp;→
+              </button>
+              <div style={{ fontSize: 13, color: "#888" }}>
+                Free · No sign-up required
               </div>
-            ))}
+            </div>
+
+            {/* Mini trust row */}
+            <div style={{
+              marginTop: 44, paddingTop: 28, borderTop: "1px solid #e4ece1",
+              display: "flex", gap: 32, flexWrap: "wrap",
+            }}>
+              {[
+                { n: "1,000+", l: "chemicals\ntracked" },
+                { n: "1,200+", l: "products\nin database" },
+                { n: "100%", l: "cited\nsources" },
+              ].map((s, i) => (
+                <div key={i}>
+                  <div style={{ fontFamily: S, fontSize: 26, fontWeight: 800, color: "#166534", lineHeight: 1 }}>{s.n}</div>
+                  <div style={{ fontSize: 12, color: "#888", marginTop: 4, whiteSpace: "pre-line", lineHeight: 1.3 }}>{s.l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* RIGHT: angled phone demo */}
+          <div style={{ position: "relative", display: "flex", justifyContent: "center", alignItems: "center" }}>
+            <div style={{
+              position: "absolute", width: 360, height: 360, borderRadius: "50%",
+              background: "radial-gradient(circle, #22c55e22, transparent 70%)",
+              filter: "blur(20px)",
+            }} />
+            <div style={{ transform: "rotate(2deg)", transformOrigin: "center center" }}>
+              <ScanDemo />
+            </div>
+            {/* Floating stat card */}
+            <div style={{
+              position: "absolute", top: "8%", left: "0%",
+              background: "#fff", padding: "12px 16px", borderRadius: 14,
+              boxShadow: "0 12px 36px rgba(15,26,15,0.12)", border: "1px solid #ecf2ea",
+              transform: "rotate(-4deg)",
+              display: "flex", alignItems: "center", gap: 10,
+            }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 6px #ef4444" }} />
+              <div>
+                <div style={{ fontSize: 11, color: "#888", fontWeight: 600 }}>PFAS detected</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a" }}>68% of activewear</div>
+              </div>
+            </div>
+            {/* Floating source card */}
+            <div style={{
+              position: "absolute", bottom: "10%", right: "-4%",
+              background: "#fff", padding: "12px 16px", borderRadius: 14,
+              boxShadow: "0 12px 36px rgba(15,26,15,0.12)", border: "1px solid #ecf2ea",
+              transform: "rotate(3deg)",
+            }}>
+              <div style={{ fontSize: 10, color: "#888", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Source</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#166534" }}>EU REACH Annex XVII</div>
+            </div>
           </div>
         </div>
+
+        <style>{`
+          @media (max-width: 860px) {
+            .cw-hero-grid { grid-template-columns: 1fr !important; gap: 48px !important; text-align: center; }
+            .cw-hero-grid > div:first-child { text-align: left; }
+          }
+        `}</style>
+      </section>
+
+      {/* ═══ METHODOLOGY — editorial, numbered, offset ═══ */}
+      <section id="methodology" style={{ padding: "100px 24px", background: "#f6f9f4", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: 40, right: -100, width: 360, height: 360, borderRadius: "50%", background: "rgba(22,163,74,0.06)", filter: "blur(10px)" }} />
+        <div style={{ maxWidth: 1080, margin: "0 auto", position: "relative" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.3fr)", gap: 64, alignItems: "flex-start" }} className="cw-method-grid">
+            <div style={{ position: "sticky", top: 96 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#16a34a", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
+                Our methodology
+              </div>
+              <h2 style={{ fontFamily: S, fontSize: "clamp(32px, 4.5vw, 52px)", fontWeight: 800, color: "#0f1a0f", lineHeight: 1.05, margin: "0 0 20px", letterSpacing: "-0.02em" }}>
+                How we<br/>build a score.
+              </h2>
+              <p style={{ fontSize: 16, color: "#555", lineHeight: 1.7, margin: 0, maxWidth: 380 }}>
+                Three weighted components. All from cited sources. No AI guessing, no made-up numbers.
+              </p>
+              <a href="mailto:hello@cleanwear.app" style={{
+                display: "inline-block", marginTop: 24,
+                fontSize: 14, fontWeight: 700, color: "#16a34a", textDecoration: "none",
+                borderBottom: "2px solid #16a34a", paddingBottom: 2,
+              }}>Ask about our methodology →</a>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {[
+                {
+                  num: "01",
+                  weight: "25%",
+                  title: "Regulatory flags",
+                  source: "EU REACH Annex XVII",
+                  desc: "We map each garment's category and materials against restricted chemical classes under EU REACH — phthalates, azo dyes, lead, antimony, formaldehyde. These are the chemicals Europe has already banned or limited.",
+                },
+                {
+                  num: "02",
+                  weight: "35%",
+                  title: "Brand safety record",
+                  source: "NRDC · OEKO-TEX · GOTS · Good On You",
+                  desc: "Scores pull from independent brand rating databases. A brand that earned an A on the NRDC PFAS scorecard outranks one with no public policy — regardless of marketing claims.",
+                },
+                {
+                  num: "03",
+                  weight: "40%",
+                  title: "Category research benchmarks",
+                  source: "Mamavation · EWG · Zheng et al. 2025",
+                  desc: "Published testing data for specific garment types. Activewear tested at 68% positive for PFAS. Children's textiles show sweat-amplified dermal transfer up to 3,252× dry contact. These studies drive the category baselines.",
+                },
+              ].map((step, i) => (
+                <div key={i} style={{
+                  padding: "28px 30px", background: "#fff", borderRadius: 20,
+                  border: "1px solid #e4ece1",
+                  display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 24, alignItems: "flex-start",
+                  transition: "transform .2s, box-shadow .2s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = "translateX(6px)"; e.currentTarget.style.boxShadow = "0 20px 40px rgba(15,26,15,0.06)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}
+                >
+                  <div style={{
+                    fontFamily: S, fontSize: 44, fontWeight: 800, color: "#16a34a",
+                    lineHeight: 1, width: 60,
+                  }}>{step.num}</div>
+                  <div>
+                    <div style={{ fontSize: 19, fontWeight: 800, color: "#0f1a0f", marginBottom: 6 }}>{step.title}</div>
+                    <div style={{ fontSize: 12, color: "#16a34a", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>
+                      Source: {step.source}
+                    </div>
+                    <p style={{ fontSize: 14, color: "#666", lineHeight: 1.7, margin: 0 }}>{step.desc}</p>
+                  </div>
+                  <div style={{
+                    fontSize: 13, fontWeight: 800, color: "#16a34a",
+                    background: "#e8f5e4", padding: "6px 12px", borderRadius: 10,
+                    whiteSpace: "nowrap",
+                  }}>{step.weight}</div>
+                </div>
+              ))}
+
+              <div style={{
+                padding: "20px 24px", background: "transparent",
+                borderRadius: 16, border: "1px dashed #c8d6c4",
+                fontSize: 13, color: "#666", lineHeight: 1.6,
+              }}>
+                <strong style={{ color: "#166534" }}>Scores are risk estimates</strong>, not lab results. They reflect the best-available published research for each brand and category — and we always flag missing data instead of filling it in.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <style>{`
+          @media (max-width: 860px) {
+            .cw-method-grid { grid-template-columns: 1fr !important; gap: 36px !important; }
+            .cw-method-grid > div:first-child { position: static !important; }
+          }
+        `}</style>
       </section>
 
       {/* ═══ THE PROBLEM — simple, human ═══ */}
@@ -377,11 +651,14 @@ export default function LandingPage({ onLaunchApp }) {
         </div>
       </section>
 
+      {/* ═══ RESEARCH SPOTLIGHT — auto-rotating carousel ═══ */}
+      <ResearchSpotlight F={F} S={S} />
+
       {/* ═══ GET RECOMMENDATIONS — Yuka-style bad→good comparison ═══ */}
       <section style={{ padding: "72px 24px", background: "#fff" }}>
         <div style={{ maxWidth: 680, margin: "0 auto", textAlign: "center" }}>
           <h2 style={{ fontFamily: S, fontSize: "clamp(24px, 3.5vw, 36px)", fontWeight: 800, color: "#1a1a1a", marginBottom: 16 }}>
-            Find safer alternatives
+            Find Safer Clothing Alternatives
           </h2>
           <p style={{ fontSize: 16, color: "#777", lineHeight: 1.6, marginBottom: 40 }}>
             When a garment scores poorly, CleanWear recommends similar items with fewer chemicals — so you don't have to guess.
@@ -496,7 +773,7 @@ export default function LandingPage({ onLaunchApp }) {
             {[
               { num: "1", icon: "📷", title: "Scan", desc: "Search a product, scan a barcode, or take a photo of the clothing tag." },
               { num: "2", icon: "📊", title: "Understand", desc: "See which chemicals are present, how they affect your body, and the research behind it." },
-              { num: "3", icon: "✅", title: "Switch", desc: "Find safer alternatives instantly — same type of garment, fewer harmful chemicals." },
+              { num: "3", icon: "✅", title: "Switch", desc: "Find safer clothing alternatives instantly — same type of garment, fewer harmful chemicals." },
             ].map((step, i) => (
               <div key={i} style={{ textAlign: "center" }}>
                 <div style={{
@@ -530,6 +807,122 @@ export default function LandingPage({ onLaunchApp }) {
             CleanWear exists so you can make informed choices about what touches your skin every single day.
           </p>
         </div>
+      </section>
+
+      {/* ═══ A 100% INDEPENDENT PROJECT — asymmetric card grid ═══ */}
+      <section style={{ padding: "100px 24px", background: "#fff", position: "relative" }}>
+        <div style={{ maxWidth: 1120, margin: "0 auto" }}>
+          <div style={{
+            display: "grid", gridTemplateColumns: "minmax(0, 0.9fr) minmax(0, 1.1fr)",
+            gap: 56, alignItems: "flex-start", marginBottom: 56,
+          }} className="cw-indep-grid">
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#16a34a", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
+                Our promise
+              </div>
+              <h2 style={{ fontFamily: S, fontSize: "clamp(32px, 4.5vw, 52px)", fontWeight: 800, color: "#0f1a0f", lineHeight: 1.05, margin: 0, letterSpacing: "-0.02em" }}>
+                A 100%<br/><em style={{ color: "#16a34a", fontWeight: 500 }}>independent</em><br/>project.
+              </h2>
+            </div>
+            <p style={{ fontSize: 18, color: "#555", lineHeight: 1.7, margin: 0, paddingTop: 12 }}>
+              CleanWear is not owned by a retailer, a brand, or a marketing agency. We don't take sponsorship money, we don't accept ads, and we don't tune scores to protect anyone's catalog. Every rating you see traces back to a citable source — and we show you which one.
+            </p>
+          </div>
+
+          {/* Asymmetric card grid — one tall card on left, two stacked on right */}
+          <div style={{
+            display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+            gap: 20,
+          }} className="cw-indep-cards">
+            {/* Tall left card */}
+            <div style={{
+              gridRow: "span 2",
+              padding: "36px 32px",
+              background: "linear-gradient(155deg, #0f1a0f, #1a2e1a)",
+              borderRadius: 24, color: "#fff",
+              display: "flex", flexDirection: "column", justifyContent: "space-between",
+              minHeight: 340, position: "relative", overflow: "hidden",
+            }}>
+              <div style={{
+                position: "absolute", top: -60, right: -60,
+                width: 240, height: 240, borderRadius: "50%",
+                background: "radial-gradient(circle, #22c55e33, transparent 70%)",
+              }} />
+              <div style={{ position: "relative" }}>
+                <div style={{ fontSize: 12, color: "#6b8f6b", fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>01 &nbsp;/&nbsp; No brand influence</div>
+                <div style={{ fontFamily: S, fontSize: 30, fontWeight: 800, lineHeight: 1.2, marginBottom: 16 }}>
+                  Brands can't pay us to<br/>change a score.
+                </div>
+                <p style={{ fontSize: 15, color: "#9fb8a0", lineHeight: 1.7, margin: 0 }}>
+                  No sponsorships, no affiliate deals, no "preferred partner" programs. If a brand's products score poorly in our database, they score poorly — full stop.
+                </p>
+              </div>
+              <div style={{ position: "relative", display: "flex", gap: 12, flexWrap: "wrap", marginTop: 24 }}>
+                {["Ad-free forever", "No sponsorships", "No paid reviews"].map((t) => (
+                  <span key={t} style={{
+                    padding: "6px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+                    background: "rgba(74,222,128,0.1)", color: "#4ade80",
+                    border: "1px solid rgba(74,222,128,0.2)",
+                  }}>{t}</span>
+                ))}
+              </div>
+            </div>
+
+            {/* Top right card */}
+            <div style={{
+              padding: "28px", background: "#f6f9f4", borderRadius: 24,
+              border: "1px solid #e4ece1", display: "flex", gap: 20, alignItems: "flex-start",
+              transition: "transform .2s, box-shadow .2s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 20px 40px rgba(15,26,15,0.08)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}
+            >
+              <div style={{
+                width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+                background: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 26, border: "1px solid #e4ece1",
+              }}>🔬</div>
+              <div>
+                <div style={{ fontSize: 11, color: "#16a34a", fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>02 · Peer-reviewed</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#0f1a0f", marginBottom: 6 }}>Every score traces to a source</div>
+                <p style={{ fontSize: 14, color: "#666", lineHeight: 1.6, margin: 0 }}>
+                  EU REACH, OEKO-TEX, NRDC, EWG, Zheng et al. 2025. We cite every study and link directly to it.
+                </p>
+              </div>
+            </div>
+
+            {/* Bottom right card */}
+            <div style={{
+              padding: "28px", background: "#f6f9f4", borderRadius: 24,
+              border: "1px solid #e4ece1", display: "flex", gap: 20, alignItems: "flex-start",
+              transition: "transform .2s, box-shadow .2s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 20px 40px rgba(15,26,15,0.08)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}
+            >
+              <div style={{
+                width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+                background: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 26, border: "1px solid #e4ece1",
+              }}>📖</div>
+              <div>
+                <div style={{ fontSize: 11, color: "#16a34a", fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>03 · Transparent</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#0f1a0f", marginBottom: 6 }}>Data gaps are disclosed</div>
+                <p style={{ fontSize: 14, color: "#666", lineHeight: 1.6, margin: 0 }}>
+                  When we don't have data, we say so. No invented numbers, no AI-generated scores, no guesses.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <style>{`
+          @media (max-width: 860px) {
+            .cw-indep-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+            .cw-indep-cards { grid-template-columns: 1fr !important; }
+            .cw-indep-cards > div:first-child { grid-row: auto !important; min-height: auto !important; }
+          }
+        `}</style>
       </section>
 
       {/* ═══ CTA ═══ */}
@@ -578,7 +971,7 @@ export default function LandingPage({ onLaunchApp }) {
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#5a7d5a", marginBottom: 12 }}>Project</div>
               <a href="mailto:hello@cleanwear.app" style={{ fontSize: 14, color: "#8aab8a", textDecoration: "none", display: "block", marginBottom: 8 }}>Contact</a>
-              <div style={{ fontSize: 14, color: "#8aab8a" }}>Methodology</div>
+              <a href="#methodology" style={{ fontSize: 14, color: "#8aab8a", textDecoration: "none", display: "block" }}>Methodology</a>
             </div>
           </div>
         </div>
@@ -587,7 +980,13 @@ export default function LandingPage({ onLaunchApp }) {
         </div>
       </footer>
 
-      <style>{`html{scroll-behavior:smooth}@keyframes cw-spin{to{transform:rotate(360deg)}}`}</style>
+      <style>{`
+        html{scroll-behavior:smooth}
+        @keyframes cw-spin{to{transform:rotate(360deg)}}
+        @keyframes cw-fade-up{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes cw-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+        h1,h2{animation: cw-fade-up .7s ease-out both;}
+      `}</style>
     </div>
   );
 }

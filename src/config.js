@@ -2,7 +2,7 @@
 // CleanWear — App Configuration Constants
 // ============================================================
 
-export const FREE_SCAN_LIMIT = 3;
+export const FREE_SCAN_LIMIT = 5;
 
 // localStorage keys
 export const LS_SCAN_COUNT = "cw_scan_count";

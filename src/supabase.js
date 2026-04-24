@@ -1,15 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
 
 // ============================================================
-// SETUP REQUIRED in Supabase Dashboard:
-// 1. Authentication > Providers > Email: Enable "magic link"
-//    Disable "email + password" (magic link only)
-// 2. Authentication > URL Configuration:
-//    Site URL: https://cleanwear.vercel.app
-//    Redirect URLs: https://cleanwear.vercel.app/auth/callback
-// 3. Authentication > Email Templates:
-//    Replace with the custom HTML template provided in
-//    supabase/email-templates/magic-link.html
+// SETUP REQUIRED in Supabase Dashboard (Authentication > URL Configuration):
+//   Site URL: https://cleanwear.app
+//   Redirect URLs (allowlist) — add ALL of these:
+//     https://cleanwear.app/auth/callback
+//     https://cleanwear-app.vercel.app/auth/callback
+//     http://localhost:5173/auth/callback
+// Email Templates > Magic Link must use {{ .ConfirmationURL }}
+// (NOT {{ .Token }}). Otherwise the redirect won't carry the code.
 // ============================================================
 
 // These are public keys — safe to expose in client code
@@ -17,7 +16,15 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hevrtwfqwlqzwx
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_qcwQk7Z_MFMP2paU-CvV9w_PsvCcnhM'
 
 export const supabase = supabaseUrl && supabaseKey
-  ? createClient(supabaseUrl, supabaseKey)
+  ? createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        flowType: 'pkce',
+        detectSessionInUrl: true,
+        autoRefreshToken: true,
+        persistSession: true,
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      },
+    })
   : null
 
 // Log every scan — includes PostHog distinct_id + user_id if authenticated
@@ -91,6 +98,63 @@ export async function removeFromWardrobe(id) {
     return { error }
   } catch (e) {
     console.warn('Remove from wardrobe failed:', e)
+    return { error: e.message }
+  }
+}
+
+// ============================================================
+// PUBLIC FEED + SHARE SCANS (migration 002_public_scans)
+// ============================================================
+
+// Fetch the weekly trending feed. Reads from the materialized view so
+// ranking is cheap on the read path. Refreshed hourly by pg_cron/Edge fn.
+export async function fetchFeedTrending({ limit = 25 } = {}) {
+  if (!supabase) return { data: [], error: 'Supabase not configured' }
+  try {
+    const { data, error } = await supabase
+      .from('feed_trending_this_week')
+      .select('brand, name, category, score, scan_count')
+      .order('scan_count', { ascending: false })
+      .limit(limit)
+    return { data: data || [], error }
+  } catch (e) {
+    console.warn('Feed fetch failed:', e)
+    return { data: [], error: e.message }
+  }
+}
+
+// Fetch a single public scan by share_slug. Used on /s/:slug — RLS on
+// the scans table gates visibility to is_public AND is_verified rows.
+export async function fetchScanBySlug(slug) {
+  if (!supabase) return { data: null, error: 'Supabase not configured' }
+  try {
+    const { data, error } = await supabase
+      .from('scans')
+      .select('id, brand, product, category, score, chemicals, scanned_at, share_slug, is_public, is_verified')
+      .eq('share_slug', slug)
+      .maybeSingle()
+    return { data, error }
+  } catch (e) {
+    console.warn('Scan fetch failed:', e)
+    return { data: null, error: e.message }
+  }
+}
+
+// File a score dispute — anonymous inserts allowed per migration 002.
+export async function submitScanDispute({ shareSlug, scanId, email, affiliation, claim, evidenceUrl }) {
+  if (!supabase) return { error: 'Supabase not configured' }
+  try {
+    const { error } = await supabase.from('scan_disputes').insert({
+      scan_id: scanId || null,
+      share_slug: shareSlug || null,
+      submitter_email: email || null,
+      submitter_affiliation: affiliation || null,
+      claim,
+      evidence_url: evidenceUrl || null,
+    })
+    return { error }
+  } catch (e) {
+    console.warn('Dispute submit failed:', e)
     return { error: e.message }
   }
 }

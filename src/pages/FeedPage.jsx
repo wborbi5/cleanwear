@@ -9,18 +9,9 @@ import { useState, useEffect } from "react";
 import {
   FeedRow, CTAButton, FeedSkeleton, EmptyFeed,
 } from "../design/components/index.js";
+import { fetchFeedTrending } from "../supabase.js";
 
 const FEED_ENABLED = import.meta.env.VITE_FEED_ENABLED === "true";
-
-// Mock data until Supabase public-scan table lands (see supabase/migrations/0002_public_scans.sql).
-const MOCK_FEED = [
-  { rank: 1, brand: "Lululemon", name: "Align Leggings", score: 29, scans: 2104, thumbnail: "👖", chips: [{ label: "PFAS", tone: "bad" }] },
-  { rank: 2, brand: "Nike", name: "Dri-FIT Training Tee", score: 28, scans: 1247, thumbnail: "👕", chips: [{ label: "Formaldehyde", tone: "bad" }] },
-  { rank: 3, brand: "Patagonia", name: "Organic Cotton Tee", score: 88, scans: 612, thumbnail: "👕", chips: ["bluesign", "GOTS"] },
-  { rank: 4, brand: "Under Armour", name: "HeatGear Compression", score: 30, scans: 548, thumbnail: "👕", chips: [{ label: "Antimony", tone: "bad" }] },
-  { rank: 5, brand: "Uniqlo", name: "Supima Cotton Tee", score: 72, scans: 489, thumbnail: "👕", chips: ["OEKO-TEX"] },
-  { rank: 6, brand: "Gymshark", name: "Vital Seamless Tee", score: 32, scans: 412, thumbnail: "👕", chips: [{ label: "PFAS", tone: "bad" }] },
-];
 
 const FILTERS = ["All", "Activewear", "Underwear", "Outerwear", "Kids"];
 
@@ -31,12 +22,23 @@ export default function FeedPage() {
   const [rows, setRows] = useState([]);
 
   useEffect(() => {
-    // Simulate fetch — replace with Supabase query.
-    const t = setTimeout(() => {
-      setRows(FEED_ENABLED ? MOCK_FEED : []);
+    if (!FEED_ENABLED) { setRows([]); setLoading(false); return; }
+    let cancelled = false;
+    fetchFeedTrending({ limit: 25 }).then(({ data }) => {
+      if (cancelled) return;
+      const mapped = (data || []).map((r, i) => ({
+        rank: i + 1,
+        brand: r.brand,
+        name: r.name,
+        score: r.score,
+        scans: r.scan_count,
+        thumbnail: "👕",
+        chips: [],
+      }));
+      setRows(mapped);
       setLoading(false);
-    }, 700);
-    return () => clearTimeout(t);
+    });
+    return () => { cancelled = true; };
   }, []);
 
   const launchApp = () => { window.location.href = "/#app"; };

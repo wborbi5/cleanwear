@@ -18,3 +18,4 @@ export {
   FeedSkeleton,
   ResultsCalculating,
 } from "./StateBlock.jsx";
+export { default as DisputeDialog } from "./DisputeDialog.jsx";

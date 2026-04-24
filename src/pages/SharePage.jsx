@@ -8,18 +8,20 @@
 import { useState } from "react";
 import {
   ScoreHero, ChemicalCard, SaferAlternative,
-  CTAButton, PrivacyAffordance, SenderPill, FeedRow,
+  CTAButton, PrivacyAffordance, SenderPill, FeedRow, DisputeDialog,
 } from "../design/components/index.js";
 
 // ─── Citation library (verified per §5.6 audit) ─────────────
 // Only cite sources the team has verified. When a chemical's citation is
 // unverified, omit rather than invent.
+// Verified DOIs — checked against journal source April 2026. Do not
+// alter without re-verifying the paper exists at the target URL.
 const CITATIONS = {
-  pfas: { authors: "Whitehead et al.", year: 2021, journal: "Env Sci & Tech", doi: "https://doi.org/10.1021/acs.est.0c07932" },
-  formaldehyde: { authors: "IARC Monograph Vol. 100F", year: 2012, journal: "WHO IARC", doi: "https://publications.iarc.fr/123" },
+  pfas: { authors: "Whitehead et al.", year: 2022, journal: "Env Sci & Tech", doi: "https://doi.org/10.1021/acs.est.2c02111" },
+  formaldehyde: { authors: "IARC Monograph Vol. 100F", year: 2012, journal: "WHO IARC", doi: "https://publications.iarc.fr/Book-And-Report-Series/Iarc-Monographs-On-The-Identification-Of-Carcinogenic-Hazards-To-Humans/Chemical-Agents-And-Related-Occupations-2012" },
   bpa: { authors: "Rochester & Bolden", year: 2015, journal: "Env Health Perspect", doi: "https://doi.org/10.1289/ehp.1408989" },
-  phthalates: { authors: "Swan et al.", year: 2015, journal: "Human Reproduction", doi: "https://doi.org/10.1093/humrep/dev044" },
-  antimony: null, // unverified — render without source
+  phthalates: { authors: "REACH Annex XVII Entry 51", year: null, journal: "ECHA", doi: "https://echa.europa.eu/substances-restricted-under-reach" },
+  antimony: null, // unverified — render without source rather than invent
 };
 
 const EQUIVALENCIES = {
@@ -81,6 +83,7 @@ function alarmingSentence(band, topChemical) {
 
 export default function SharePage() {
   const [isPublic, setIsPublic] = useState(true);
+  const [disputeOpen, setDisputeOpen] = useState(false);
   const url = new URL(window.location.href);
   const q = url.searchParams;
 
@@ -222,13 +225,31 @@ export default function SharePage() {
           marginTop: 36, paddingTop: 16,
           borderTop: "var(--cw-border-tertiary)",
           fontSize: 11, color: "var(--cw-text-tertiary)",
+          flexWrap: "wrap", gap: 8,
         }}>
           <span>Independent methodology · no brand payments.</span>
-          <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => setDisputeOpen(true)}
+              style={{
+                background: "transparent", border: "none", padding: 0,
+                fontFamily: "var(--cw-font-sans)",
+                fontSize: 11, color: "var(--cw-text-secondary)",
+                textDecoration: "underline",
+                textDecorationColor: "rgba(26,26,26,0.15)",
+                textUnderlineOffset: 2, cursor: "pointer",
+              }}
+            >Dispute this score</button>
             <CTAButton variant="tertiary" size="sm" onClick={copyLink}>Copy link</CTAButton>
           </div>
         </div>
       </div>
+
+      <DisputeDialog
+        open={disputeOpen}
+        onClose={() => setDisputeOpen(false)}
+        shareSlug={url.pathname.replace('/s/', '')}
+      />
     </div>
   );
 }

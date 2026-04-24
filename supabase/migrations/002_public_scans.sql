@@ -4,157 +4,174 @@
 -- posture, not a feature"), this adds the public-scan surface that powers
 -- the /s/:scanId share page and the /feed aggregations.
 --
--- Key decisions encoded here:
+-- This is the as-applied, cleaned version. Applied to the production
+-- Supabase project on 2026-04-24 across 5 MCP migrations
+-- (public_scans_share_feed_disputes, harden_public_scan_functions,
+--  restore_public_scan_functions, scan_disputes_anon_policy_explicit,
+--  tighten_scans_rls_drop_readall). Consolidated here for clarity and
+--  to keep the migrations folder reproducible.
+--
+-- Key decisions:
 --   - Scans default to is_public = true; owner can flip per row.
---   - Public reads are allowed ONLY on verified (not LLM-generated) scans
---     that have is_public = true. No PII columns are exposed to anon reads.
---   - Feed aggregations query a dedicated materialized view so rank/volume
---     computation doesn't run on every page load. Refreshed hourly.
---   - Compatible with the existing wardrobe/scans tables from 001.
+--   - Anon reads require is_public AND is_verified. Nothing is verified
+--     at launch, so /feed returns empty until verification pipeline ships.
+--   - Functions pin search_path = '' and fully qualify every call
+--     (extensions.gen_random_bytes, pg_catalog.substr) so they pass the
+--     Supabase security advisor.
+--   - DROPS the pre-existing "Anyone can read scans" policy which was
+--     leaking every scan to anon. Replaced by scans_select_public.
 -- ============================================================
 
--- ── 1. Add public-scan columns to existing scans table ──────
+-- 1. Add public-scan columns to the existing scans table
 ALTER TABLE public.scans
-  ADD COLUMN IF NOT EXISTS is_public         boolean NOT NULL DEFAULT true,
-  ADD COLUMN IF NOT EXISTS is_verified       boolean NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS share_slug        text UNIQUE,
-  ADD COLUMN IF NOT EXISTS chemicals         jsonb,
-  ADD COLUMN IF NOT EXISTS scan_version      integer NOT NULL DEFAULT 1,
-  ADD COLUMN IF NOT EXISTS disputed_at       timestamptz,
-  ADD COLUMN IF NOT EXISTS disputed_reason   text;
+  ADD COLUMN IF NOT EXISTS is_public        boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS is_verified      boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS share_slug       text UNIQUE,
+  ADD COLUMN IF NOT EXISTS chemicals        jsonb,
+  ADD COLUMN IF NOT EXISTS scan_version     integer NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS disputed_at      timestamptz,
+  ADD COLUMN IF NOT EXISTS disputed_reason  text;
 
--- share_slug is what appears in /s/:scanId URLs. Not the primary key —
--- keeps the id opaque and lets us rotate slugs if a scan is taken down.
-CREATE INDEX IF NOT EXISTS idx_scans_share_slug ON public.scans(share_slug) WHERE share_slug IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_scans_public ON public.scans(is_public, is_verified, created_at DESC) WHERE is_public = true AND is_verified = true;
+CREATE INDEX IF NOT EXISTS idx_scans_share_slug
+  ON public.scans(share_slug) WHERE share_slug IS NOT NULL;
 
--- Assign share_slug on insert if null (used by client-side share links).
+CREATE INDEX IF NOT EXISTS idx_scans_public
+  ON public.scans(is_public, is_verified, scanned_at DESC)
+  WHERE is_public = true AND is_verified = true;
+
+-- 2. Share-slug trigger. Every call is fully qualified so the function
+--    runs safely with SET search_path = ''.
 CREATE OR REPLACE FUNCTION public.assign_share_slug()
 RETURNS trigger
 LANGUAGE plpgsql
-AS $$
+SET search_path = ''
+AS $fn$
 BEGIN
   IF NEW.share_slug IS NULL THEN
-    -- 10-char base62-ish slug. Collision-resistant at the volumes we expect.
-    NEW.share_slug := substr(
-      translate(encode(gen_random_bytes(8), 'base64'), '+/=', 'xyz'),
+    NEW.share_slug := pg_catalog.substr(
+      pg_catalog.translate(
+        pg_catalog.encode(extensions.gen_random_bytes(8), 'base64'),
+        '+/=', 'xyz'
+      ),
       1, 10
     );
   END IF;
   RETURN NEW;
 END;
-$$;
+$fn$;
 
 DROP TRIGGER IF EXISTS trg_assign_share_slug ON public.scans;
 CREATE TRIGGER trg_assign_share_slug
   BEFORE INSERT ON public.scans
   FOR EACH ROW EXECUTE FUNCTION public.assign_share_slug();
 
--- ── 2. Public RLS: anyone can read is_public + is_verified scans ────
---
--- The narrow SELECT policy is load-bearing for the public-by-default posture.
--- Whittling it further would silently break the Share page for recipients
--- who aren't logged in.
-CREATE POLICY IF NOT EXISTS "scans_select_public"
+-- 3. RLS housekeeping on scans
+--    a) drop the pre-existing "Anyone can read scans" read-all policy —
+--       it was leaking every anon-created row to any anon reader.
+--    b) add scans_select_public (is_public AND is_verified).
+--    c) add scans_toggle_privacy so owners can flip their own is_public.
+DROP POLICY IF EXISTS "Anyone can read scans" ON public.scans;
+DROP POLICY IF EXISTS "Anyone can insert scans" ON public.scans;
+-- scans_anon_insert, scans_select_own, scans_update_own already exist from 001.
+
+DROP POLICY IF EXISTS "scans_select_public" ON public.scans;
+CREATE POLICY "scans_select_public"
   ON public.scans
   FOR SELECT
+  TO anon, authenticated
   USING (is_public = true AND is_verified = true);
 
--- Owners can always read their own scans regardless of flags (already covered
--- by scans_select_own from migration 001, kept here as a comment for clarity).
-
--- Owners can toggle the privacy flag on their own scans.
-CREATE POLICY IF NOT EXISTS "scans_toggle_privacy"
+DROP POLICY IF EXISTS "scans_toggle_privacy" ON public.scans;
+CREATE POLICY "scans_toggle_privacy"
   ON public.scans
   FOR UPDATE
+  TO authenticated
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
--- ── 3. Feed aggregation (materialized) ──────────────────────
---
--- Aggregates by product + week. Refreshed hourly via a scheduled function
--- (Supabase Edge Function / pg_cron; not set up in this migration).
-CREATE MATERIALIZED VIEW IF NOT EXISTS public.feed_trending_this_week AS
+-- 4. Feed trending materialized view (§5.7: at least 2 scans per product)
+DROP MATERIALIZED VIEW IF EXISTS public.feed_trending_this_week;
+CREATE MATERIALIZED VIEW public.feed_trending_this_week AS
 SELECT
   s.brand,
   s.product                              AS name,
   s.category                             AS category,
-  mode() WITHIN GROUP (ORDER BY s.score) AS score,  -- representative score
+  mode() WITHIN GROUP (ORDER BY s.score) AS score,
   COUNT(*)                               AS scan_count,
-  MAX(s.created_at)                      AS last_scanned_at
+  MAX(s.scanned_at)                      AS last_scanned_at
 FROM public.scans s
 WHERE s.is_public = true
   AND s.is_verified = true
-  AND s.created_at >= now() - interval '7 days'
+  AND s.scanned_at >= now() - interval '7 days'
 GROUP BY s.brand, s.product, s.category
-HAVING COUNT(*) >= 2  -- §5.7: hide products with only a single scan
-ORDER BY scan_count DESC;
+HAVING COUNT(*) >= 2;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_feed_trending_brand_name
   ON public.feed_trending_this_week(brand, name);
 
--- Refresh helper — call from pg_cron or a Supabase Edge Function:
---   SELECT public.refresh_feed_trending();
+GRANT SELECT ON public.feed_trending_this_week TO anon, authenticated;
+
 CREATE OR REPLACE FUNCTION public.refresh_feed_trending()
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $$
+SET search_path = ''
+AS $fn$
 BEGIN
   REFRESH MATERIALIZED VIEW CONCURRENTLY public.feed_trending_this_week;
 END;
-$$;
+$fn$;
 
--- ── 4. Dispute-this-score trail ─────────────────────────────
---
--- Per design-handoff §5.9: "Add a visible 'Dispute this score' link for
--- brands on every Share/Feed entry linking to a process." This table is
--- the persistence layer.
+-- 5. Dispute log
 CREATE TABLE IF NOT EXISTS public.scan_disputes (
-  id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  scan_id       bigint REFERENCES public.scans(id) ON DELETE CASCADE,
-  submitter_email text,          -- can be null (anonymous dispute allowed)
-  submitter_affiliation text,    -- "brand representative", "consumer", etc.
-  claim         text NOT NULL,   -- free-text dispute body
-  evidence_url  text,            -- optional link to supporting material
-  status        text NOT NULL DEFAULT 'open',  -- open | under_review | resolved | rejected
-  created_at    timestamptz DEFAULT now(),
-  resolved_at   timestamptz
+  id              bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  scan_id         bigint REFERENCES public.scans(id) ON DELETE CASCADE,
+  share_slug      text,
+  submitter_email text,
+  submitter_affiliation text,
+  claim           text NOT NULL,
+  evidence_url    text,
+  status          text NOT NULL DEFAULT 'open',
+  created_at      timestamptz DEFAULT now(),
+  resolved_at     timestamptz
 );
 
-CREATE INDEX IF NOT EXISTS idx_scan_disputes_scan_id ON public.scan_disputes(scan_id);
-CREATE INDEX IF NOT EXISTS idx_scan_disputes_status ON public.scan_disputes(status);
+CREATE INDEX IF NOT EXISTS idx_scan_disputes_scan_id  ON public.scan_disputes(scan_id);
+CREATE INDEX IF NOT EXISTS idx_scan_disputes_status   ON public.scan_disputes(status);
 
 ALTER TABLE public.scan_disputes ENABLE ROW LEVEL SECURITY;
 
--- Anyone may file a dispute (including anon). Admin reviews out-of-band.
-CREATE POLICY IF NOT EXISTS "scan_disputes_anon_insert"
+-- Anyone may file a dispute. No SELECT policy = default deny, only
+-- service_role can read the queue (for the admin moderation UI).
+DROP POLICY IF EXISTS "scan_disputes_anon_insert" ON public.scan_disputes;
+DROP POLICY IF EXISTS "scan_disputes_public_insert" ON public.scan_disputes;
+CREATE POLICY "scan_disputes_anon_insert"
   ON public.scan_disputes
-  FOR INSERT WITH CHECK (true);
+  AS PERMISSIVE
+  FOR INSERT
+  TO anon, authenticated
+  WITH CHECK (true);
 
--- Only service_role sees the queue (RA/admin reviews through an admin UI).
--- No SELECT policy for authenticated/anon = default deny.
-
--- ── 5. Takedown support (DMCA / user-sensitive scans) ───────
---
--- Soft-delete pattern. We don't hard-delete because a scan may be cited in
--- another user's wardrobe activity log. Setting is_public = false removes
--- the scan from every public surface immediately.
+-- 6. Takedown soft-delete helper
 CREATE OR REPLACE FUNCTION public.hide_scan(scan_slug text)
 RETURNS void
 LANGUAGE sql
 SECURITY DEFINER
-AS $$
+SET search_path = ''
+AS $fn$
   UPDATE public.scans
      SET is_public = false,
-         disputed_at = now(),
+         disputed_at = pg_catalog.now(),
          disputed_reason = COALESCE(disputed_reason, 'owner takedown')
    WHERE share_slug = scan_slug;
-$$;
+$fn$;
 
--- ── 6. Housekeeping ─────────────────────────────────────────
--- Back-fill share_slug on rows that pre-date this migration.
-UPDATE public.scans SET share_slug = NULL WHERE share_slug = '';  -- normalize empties
--- Then let a separate script (outside this migration) call an INSERT-like
--- update on each pre-existing row to force the trigger to populate slugs.
--- Running that inside a migration risks long locks on hot tables.
+-- 7. Back-fill share_slug on pre-existing rows (one-shot; future inserts
+--    populate via the trigger).
+UPDATE public.scans
+   SET share_slug = pg_catalog.substr(
+         pg_catalog.translate(
+           pg_catalog.encode(extensions.gen_random_bytes(8), 'base64'),
+           '+/=', 'xyz'
+         ), 1, 10)
+ WHERE share_slug IS NULL;

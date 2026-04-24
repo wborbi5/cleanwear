@@ -137,6 +137,8 @@ export default function ResultsPage({
   const [isPublic, setIsPublic]     = useState(true);
   const [disputeOpen, setDisputeOpen] = useState(false);
   const [wardrobeSaved, setWardrobeSaved] = useState(false);
+  const [exposureOpen, setExposureOpen] = useState(false);
+  const [moreAltsOpen, setMoreAltsOpen] = useState(false);
 
   useEffect(() => { const t = setTimeout(() => setMounted(true), 60); return () => clearTimeout(t); }, []);
 
@@ -167,10 +169,21 @@ export default function ResultsPage({
     setWardrobeSaved(true);
   };
 
-  // Reusable styles
-  const card = { background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 20, padding: 24, marginBottom: 16 };
-  const heading = { fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontSize: 22, fontWeight: 700, margin: "0 0 4px", color: "#fff", letterSpacing: "-0.01em" };
-  const sub = { fontSize: 13, color: "#71717a", margin: "0 0 20px", lineHeight: 1.5 };
+  // Verdict sentence — instant feedback right under the hero.
+  const topChem = chemicals.map(k => ({ key: k, info: CHEMICAL_INFO[k] })).find(x => x.info?.severity === "high");
+  const verdict =
+    ov <= 39
+      ? (topChem
+          ? `Tested positive for ${topChem.info.name} — the kind of chemical the EU is phasing out.`
+          : "High chemical risk. Safer options exist at similar prices.")
+      : ov <= 69
+        ? "A few chemicals of concern. Safer alternatives exist at the same price."
+        : "Low chemical risk. Clean composition for daily wear.";
+
+  // Section style primitives — flat flow, no cards, just dividers.
+  const section = { padding: "28px 0", borderTop: "0.5px solid rgba(255,255,255,0.06)" };
+  const heading = { fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontSize: 22, fontWeight: 700, margin: "0 0 6px", color: "#fff", letterSpacing: "-0.01em" };
+  const sub = { fontSize: 13, color: "#71717a", margin: "0 0 18px", lineHeight: 1.5 };
   const eyebrow = { display: "inline-flex", alignItems: "center", gap: 8, fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "#71717a", marginBottom: 12 };
 
   return (
@@ -250,131 +263,126 @@ export default function ResultsPage({
         </div>
       </div>
 
-      {/* ═══ DETAILS ═══ */}
-      <div style={{ padding: "48px 20px 20px", maxWidth: 760, margin: "0 auto" }}>
-
-        {/* Brand-level notice */}
+      {/* ═══ VERDICT SENTENCE — instant feedback ═══ */}
+      <div style={{ padding: "32px 20px 0", maxWidth: 560, margin: "0 auto", textAlign: "center" }}>
+        <p style={{
+          fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)",
+          fontSize: "clamp(20px, 4vw, 24px)",
+          fontWeight: 400, fontStyle: "italic",
+          color: sc.text, lineHeight: 1.4, letterSpacing: "-0.01em",
+          margin: 0,
+        }}>"{verdict}"</p>
         {R._brand_level_only && (
-          <div style={{ ...card, background: "rgba(201,168,76,0.06)", borderColor: "rgba(201,168,76,0.2)" }}>
-            <div style={eyebrow}>
-              <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#c9a84c" }} />
-              Brand-level assessment
-            </div>
-            <p style={{ fontSize: 14, color: "#d4d4d8", lineHeight: 1.65, margin: 0 }}>
-              This specific product isn't in our database yet. The score reflects <strong style={{ color: "#fff" }}>{R.brand}</strong>'s
-              overall chemical safety profile from public data — not product-level testing.
-            </p>
+          <div style={{
+            marginTop: 16, display: "inline-flex", alignItems: "center", gap: 6,
+            padding: "5px 10px", borderRadius: 100,
+            background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.18)",
+            fontSize: 10, fontWeight: 600, color: "#c9a84c", letterSpacing: 1.2, textTransform: "uppercase",
+          }}>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#c9a84c" }} />
+            Brand-level assessment
           </div>
         )}
+      </div>
 
-        {/* Confidence explanation */}
-        <div style={{ ...card, background: conf.bg, borderColor: conf.border }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <div style={{ width: 9, height: 9, borderRadius: "50%", background: conf.color }} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: conf.color, letterSpacing: 1.2 }}>{conf.label}</span>
-          </div>
-          <p style={{ fontSize: 13, color: "#d4d4d8", lineHeight: 1.65, margin: 0 }}>{conf.desc}</p>
-        </div>
+      {/* ═══ DETAILS (flat flow, dividers, no cards) ═══ */}
+      <div style={{ padding: "12px 20px 20px", maxWidth: 640, margin: "0 auto" }}>
 
-        {/* Score breakdown */}
+        {/* ── WHY THIS SCORE ── */}
         {v2 && v2.components?.length > 0 && (
-          <div style={card}>
+          <div style={section}>
             <div style={eyebrow}>
               <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#4ade80" }} />
-              Score breakdown
+              Why this score
             </div>
             <h3 style={heading}>
               Three weighted components.{" "}
               <em style={{ fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontStyle: "italic", color: "#4ade80", fontWeight: 500 }}>All cited.</em>
             </h3>
-            <p style={sub}>Each score traces to a named public source. We never generate numbers we can't cite.</p>
+            <p style={sub}>
+              <span style={{ fontWeight: 600, color: conf.color }}>{conf.label}.</span>{" "}
+              <span style={{ color: "#a1a1aa" }}>{conf.desc}</span>
+            </p>
+
+            {/* Component bars — no card bg, just rows */}
             {v2.components.map((c, i) => {
               const label = c.source === "EU REACH Annex XVII" ? "Regulatory flags"
                          : c.source.match(/NRDC|Good On You|OEKO-TEX|GOTS|bluesign|General/) ? "Brand record"
                          : "Category research";
               const csc = scoreColor(c.score);
               return (
-                <div key={i} style={{ marginBottom: i < v2.components.length - 1 ? 16 : 0 }}>
+                <div key={i} style={{ padding: "12px 0", borderTop: i === 0 ? "none" : "0.5px solid rgba(255,255,255,0.06)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: "#fff" }}>{label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "#e8e8e8" }}>{label}</span>
                     <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-                      <span style={{ fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontWeight: 800, fontSize: 20, color: csc.text }}>{c.score}</span>
-                      {c.sourceUrl && <a href={c.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "#4ade80", textDecoration: "none", fontWeight: 600 }}>Source ↗</a>}
+                      <span style={{ fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontWeight: 700, fontSize: 18, color: csc.text }}>{c.score}</span>
+                      {c.sourceUrl && <a href={c.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: "#a1a1aa", textDecoration: "none", fontWeight: 500, letterSpacing: 0.4 }}>Source ↗</a>}
                     </div>
                   </div>
-                  <div style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,0.06)", overflow: "hidden", marginBottom: 6 }}>
-                    <div style={{ height: "100%", borderRadius: 3, width: `${c.score}%`, background: csc.text, transition: "width 1s ease-out" }} />
+                  <div style={{ height: 3, borderRadius: 2, background: "rgba(255,255,255,0.05)", overflow: "hidden", marginBottom: 6 }}>
+                    <div style={{ height: "100%", borderRadius: 2, width: `${c.score}%`, background: csc.text, transition: "width 1s ease-out" }} />
                   </div>
-                  <div style={{ fontSize: 12, color: "#a1a1aa", lineHeight: 1.55 }}>{c.label}</div>
+                  <div style={{ fontSize: 12, color: "#a1a1aa", lineHeight: 1.5 }}>{c.label}</div>
                 </div>
               );
             })}
 
-            {v2.gaps?.length > 0 && (
-              <div style={{ marginTop: 18, padding: 14, background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.14)", borderRadius: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#f87171", marginBottom: 6, letterSpacing: 0.4 }}>Missing data</div>
-                {v2.gaps.map((g, i) => (
-                  <div key={i} style={{ fontSize: 12, color: "#d4d4d8", lineHeight: 1.6 }}>• {g}</div>
+            {/* Regulatory flags: inline list below component bars */}
+            {v2.flags?.length > 0 && (
+              <div style={{ marginTop: 16, paddingTop: 14, borderTop: "0.5px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#a1a1aa", letterSpacing: 0.4, marginBottom: 8 }}>
+                  EU-restricted chemicals for this garment type
+                </div>
+                {v2.flags.map((flag, i) => (
+                  <div key={i} style={{ fontSize: 12, color: "#d4d4d8", lineHeight: 1.6, padding: "3px 0" }}>
+                    <span style={{ color: "#fff", fontWeight: 500 }}>{flag.chemical}</span>
+                    <span style={{ color: "#71717a" }}> · {flag.regulation} ({flag.limit})</span>
+                  </div>
                 ))}
-                <div style={{ fontSize: 11, color: "#71717a", marginTop: 8, fontStyle: "italic" }}>Where data is missing, we say so — we don't guess.</div>
+              </div>
+            )}
+
+            {/* Gap note: quiet italic line, not red callout */}
+            {v2.gaps?.length > 0 && (
+              <div style={{ marginTop: 14, fontSize: 11, color: "#71717a", lineHeight: 1.6, fontStyle: "italic" }}>
+                Data gap: {v2.gaps.join(" · ")}. Where data is missing, we say so.
               </div>
             )}
           </div>
         )}
 
-        {/* Regulatory flags */}
-        {v2 && v2.flags?.length > 0 && (
-          <div style={card}>
-            <div style={eyebrow}>
-              <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#f87171" }} />
-              Regulatory flags
-            </div>
-            <h3 style={heading}>
-              What the <em style={{ fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontStyle: "italic", color: "#4ade80", fontWeight: 500 }}>EU</em> says.
-            </h3>
-            <p style={sub}>Chemicals restricted under international frameworks for this garment type.</p>
-            {v2.flags.map((flag, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 0", borderBottom: i < v2.flags.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#f87171", marginTop: 6, flexShrink: 0 }} />
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "#fff" }}>{flag.chemical}</div>
-                  <div style={{ fontSize: 12, color: "#a1a1aa", marginTop: 2 }}>{flag.regulation} — limit: {flag.limit}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Potential chemical concerns */}
+        {/* ── WHAT'S IN THIS FABRIC ── */}
         {chemicals.length > 0 && (
-          <div style={card}>
+          <div style={section}>
             <div style={eyebrow}>
               <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#c9a84c" }} />
-              Potential chemical concerns
+              What's in this fabric
             </div>
             <h3 style={heading}>
-              What this fabric might be <em style={{ fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontStyle: "italic", color: "#f87171", fontWeight: 500 }}>carrying.</em>
+              What this fabric might be{" "}
+              <em style={{ fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontStyle: "italic", color: "#f87171", fontWeight: 500 }}>carrying.</em>
             </h3>
             <p style={sub}>
-              Inferred from the declared materials
-              {R.materials?.length > 0 && ` (${R.materials.map(m => typeof m === "string" ? m : m.name).filter(Boolean).join(", ")})`}
-              . These are published risk factors for this type of fabric — not confirmed findings without lab testing.
+              Inferred from the declared materials. Published risk factors for this fabric type — not confirmed findings without lab testing.
             </p>
 
             {chemicals.map((key, i) => {
               const chem = CHEMICAL_INFO[key];
               if (!chem) return null;
               return (
-                <div key={key} style={{ padding: "16px 0", borderBottom: i < chemicals.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
-                    <span style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>{chem.name}</span>
-                    <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", padding: "3px 8px", borderRadius: 4, background: chem.severity === "high" ? "rgba(248,113,113,0.15)" : "rgba(201,168,76,0.15)", color: chem.severity === "high" ? "#f87171" : "#c9a84c" }}>
+                <div key={key} style={{ padding: "12px 0", borderTop: i === 0 ? "none" : "0.5px solid rgba(255,255,255,0.06)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "#fff" }}>{chem.name}</span>
+                    <span style={{
+                      fontSize: 9, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase",
+                      color: chem.severity === "high" ? "#f87171" : "#c9a84c",
+                    }}>
                       {chem.severity === "high" ? "High" : "Moderate"}
                     </span>
                   </div>
-                  <div style={{ fontSize: 13, color: "#d4d4d8", lineHeight: 1.65, marginBottom: 6 }}>{chem.healthNote}</div>
+                  <div style={{ fontSize: 13, color: "#a1a1aa", lineHeight: 1.6, marginBottom: 4 }}>{chem.healthNote}</div>
                   {chem.citation && (
-                    <a href={chem.citation.doi || undefined} target={chem.citation.doi ? "_blank" : undefined} rel="noopener noreferrer" style={{ fontSize: 11, color: chem.citation.doi ? "#4ade80" : "#71717a", textDecoration: chem.citation.doi ? "underline" : "none", textUnderlineOffset: 2, lineHeight: 1.5 }}>
+                    <a href={chem.citation.doi || undefined} target={chem.citation.doi ? "_blank" : undefined} rel="noopener noreferrer" style={{ fontSize: 10, color: "#71717a", textDecoration: chem.citation.doi ? "underline" : "none", textUnderlineOffset: 2, textDecorationColor: "rgba(255,255,255,0.15)" }}>
                       {chem.citation.authors}{chem.citation.year ? ` ${chem.citation.year}` : ""} · <em style={{ fontStyle: "italic" }}>{chem.citation.journal}</em>
                     </a>
                   )}
@@ -384,76 +392,9 @@ export default function ResultsPage({
           </div>
         )}
 
-        {/* Exposure estimator */}
-        {chemicals.length > 0 && (
-          <div style={card}>
-            <div style={eyebrow}>
-              <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#4ade80" }} />
-              Exposure estimator
-            </div>
-            <h3 style={heading}>
-              What wearing this <em style={{ fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontStyle: "italic", color: "#4ade80", fontWeight: 500 }}>actually means.</em>
-            </h3>
-            <p style={sub}>Select how you'll use this garment. Exposure updates in real time.</p>
-
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.8, textTransform: "uppercase", color: "#71717a", marginBottom: 8 }}>Activity</div>
-              <PillRow options={ACTIVITY_OPTIONS} value={activity} onChange={setActivity} />
-            </div>
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.8, textTransform: "uppercase", color: "#71717a", marginBottom: 8 }}>Frequency</div>
-              <PillRow options={FREQUENCY_OPTIONS} value={frequency} onChange={setFrequency} />
-            </div>
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.8, textTransform: "uppercase", color: "#71717a", marginBottom: 8 }}>Skin type</div>
-              <PillRow options={SKIN_OPTIONS} value={skin} onChange={setSkin} />
-            </div>
-
-            {/* Risk gauge */}
-            <div style={{ background: rb.bg, border: `1px solid ${rb.color}30`, borderRadius: 16, padding: 20, marginBottom: 20, transition: "all 0.4s ease" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 14 }}>
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", color: "#71717a", marginBottom: 4 }}>Exposure level</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: rb.color, letterSpacing: 1.2 }}>{rb.label}</div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontSize: 46, fontWeight: 800, color: rb.color, lineHeight: 1 }}>{riskIdx}</div>
-                  <div style={{ fontSize: 10, color: "#52525b", marginTop: 3, letterSpacing: 0.4 }}>out of 99</div>
-                </div>
-              </div>
-              <div style={{ height: 8, borderRadius: 4, background: "rgba(255,255,255,0.06)", overflow: "hidden", marginBottom: 12 }}>
-                <div style={{ height: "100%", borderRadius: 4, width: `${riskIdx}%`, background: `linear-gradient(90deg, #4ade80, ${rb.color})`, transition: "width 0.6s cubic-bezier(0.16,1,0.3,1), background 0.4s ease", boxShadow: `0 0 10px ${rb.color}40` }} />
-              </div>
-              {vsOrganic > 1 && (
-                <div style={{ fontSize: 12, color: "#d4d4d8", lineHeight: 1.55 }}>
-                  <span style={{ fontWeight: 700, color: rb.color }}>{vsOrganic}×</span> more chemical exposure than an organic-cotton equivalent at this usage level.
-                </div>
-              )}
-            </div>
-
-            {bullets.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {bullets.map((b, i) => (
-                  <div key={`${activity}-${i}`} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: rb.color, marginTop: 7, flexShrink: 0 }} />
-                    <div>
-                      <div style={{ fontSize: 13, color: "#e8e8e8", lineHeight: 1.6 }}>{b.text}</div>
-                      {b.source && (
-                        b.href
-                          ? <a href={b.href} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "#4ade80", textDecoration: "underline", textUnderlineOffset: 2, marginTop: 4, display: "inline-block" }}>{b.source}</a>
-                          : <div style={{ fontSize: 11, color: "#52525b", marginTop: 4 }}>{b.source}</div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Safer alternatives */}
+        {/* ── SAFER ALTERNATIVES ── */}
         {alts.length > 0 && (
-          <div data-section="alternatives" style={card}>
+          <div data-section="alternatives" style={section}>
             <div style={eyebrow}>
               <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#4ade80" }} />
               Safer alternatives
@@ -462,80 +403,166 @@ export default function ResultsPage({
               Pick something{" "}
               <em style={{ fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontStyle: "italic", color: "#4ade80", fontWeight: 500 }}>safer.</em>
             </h3>
-            <p style={sub}>Same garment type, lower known chemical risk — based on certifications and published data.</p>
-            {alts.map((alt, i) => {
+            <p style={sub}>Same garment type, lower known chemical risk.</p>
+
+            {/* Primary alternative — prominent */}
+            {alts.slice(0, moreAltsOpen ? alts.length : 1).map((alt, i) => {
               const asc = scoreColor(alt.score || 70);
               return (
                 <div
                   key={i}
                   onClick={() => onScanAlternative?.(`${alt.brand} ${alt.name}`)}
                   style={{
-                    background: "rgba(74,222,128,0.03)",
-                    border: "1px solid rgba(74,222,128,0.15)",
-                    borderRadius: 16, padding: 16,
-                    marginBottom: i < alts.length - 1 ? 10 : 0,
+                    background: i === 0 ? "rgba(74,222,128,0.05)" : "rgba(74,222,128,0.02)",
+                    border: `0.5px solid ${i === 0 ? "rgba(74,222,128,0.25)" : "rgba(74,222,128,0.1)"}`,
+                    borderRadius: 12, padding: "14px 16px",
+                    marginBottom: i < (moreAltsOpen ? alts.length : 1) - 1 ? 8 : 0,
                     cursor: onScanAlternative ? "pointer" : "default",
                     transition: "all .2s",
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.borderColor = "rgba(74,222,128,0.3)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.borderColor = "rgba(74,222,128,0.15)"; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(74,222,128,0.4)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = i === 0 ? "rgba(74,222,128,0.25)" : "rgba(74,222,128,0.1)"; }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "#71717a", marginBottom: 3 }}>{alt.brand}</div>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: "#fff", lineHeight: 1.3 }}>{alt.name}</div>
-                      <div style={{ fontSize: 12, color: "#4ade80", marginTop: 6, fontWeight: 600 }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.8, textTransform: "uppercase", color: "#71717a", marginBottom: 3 }}>{alt.brand}</div>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: "#fff", lineHeight: 1.3 }}>{alt.name}</div>
+                      <div style={{ fontSize: 11, color: "#4ade80", marginTop: 5, fontWeight: 500 }}>
                         +{alt.delta} pts{alt.materials ? ` · ${alt.materials}` : ""}
                       </div>
                     </div>
-                    <div style={{ textAlign: "center", minWidth: 56, paddingLeft: 12, borderLeft: "1px solid rgba(255,255,255,0.06)" }}>
-                      <div style={{ fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontSize: 26, fontWeight: 900, color: asc.text, lineHeight: 1 }}>{alt.score}</div>
-                      <div style={{ fontSize: 9, color: "#52525b", marginTop: 3, letterSpacing: 0.6, textTransform: "uppercase", fontWeight: 700 }}>Score</div>
+                    <div style={{ textAlign: "center", minWidth: 48 }}>
+                      <div style={{ fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontSize: 24, fontWeight: 700, color: asc.text, lineHeight: 1 }}>{alt.score}</div>
+                      <div style={{ fontSize: 9, color: "#52525b", marginTop: 3, letterSpacing: 0.5, textTransform: "uppercase", fontWeight: 600 }}>Score</div>
                     </div>
                   </div>
                 </div>
               );
             })}
+
+            {/* Expand "More options" if there are more alts */}
+            {alts.length > 1 && !moreAltsOpen && (
+              <button
+                onClick={() => setMoreAltsOpen(true)}
+                style={{
+                  background: "transparent", border: "none", padding: "10px 0",
+                  fontFamily: "inherit", fontSize: 12, color: "#a1a1aa",
+                  cursor: "pointer", marginTop: 4,
+                }}
+              >
+                More options ({alts.length - 1}) ↓
+              </button>
+            )}
           </div>
         )}
 
-        {/* Actions */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 20 }}>
+        {/* ── CUSTOMIZE EXPOSURE (collapsed by default) ── */}
+        {chemicals.length > 0 && (
+          <div style={section}>
+            <button
+              onClick={() => setExposureOpen(!exposureOpen)}
+              style={{
+                background: "transparent", border: "none", padding: 0,
+                fontFamily: "inherit", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                width: "100%", textAlign: "left",
+              }}
+            >
+              <div>
+                <div style={eyebrow}>
+                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#71717a" }} />
+                  Customize exposure
+                </div>
+                <div style={{ fontSize: 13, color: "#a1a1aa", lineHeight: 1.5 }}>
+                  See what wearing this <em style={{ fontStyle: "italic", color: "#d4d4d8" }}>actually means</em> for your use.
+                </div>
+              </div>
+              <span style={{ fontSize: 18, color: "#71717a", marginLeft: 12, transition: "transform 0.2s", transform: exposureOpen ? "rotate(180deg)" : "rotate(0)" }}>▾</span>
+            </button>
+
+            {exposureOpen && (
+              <div style={{ marginTop: 20 }}>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase", color: "#71717a", marginBottom: 7 }}>Activity</div>
+                  <PillRow options={ACTIVITY_OPTIONS} value={activity} onChange={setActivity} />
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase", color: "#71717a", marginBottom: 7 }}>Frequency</div>
+                  <PillRow options={FREQUENCY_OPTIONS} value={frequency} onChange={setFrequency} />
+                </div>
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase", color: "#71717a", marginBottom: 7 }}>Skin type</div>
+                  <PillRow options={SKIN_OPTIONS} value={skin} onChange={setSkin} />
+                </div>
+
+                {/* Quiet risk readout — no glow, no colored bg */}
+                <div style={{ padding: "14px 0", borderTop: "0.5px solid rgba(255,255,255,0.06)", borderBottom: "0.5px solid rgba(255,255,255,0.06)", marginBottom: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#71717a", letterSpacing: 1.2, textTransform: "uppercase" }}>Exposure level — {rb.label}</span>
+                    <span style={{ fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontSize: 28, fontWeight: 700, color: rb.color, lineHeight: 1 }}>{riskIdx}<span style={{ fontSize: 14, color: "#52525b", fontWeight: 400 }}>/99</span></span>
+                  </div>
+                  <div style={{ height: 3, borderRadius: 2, background: "rgba(255,255,255,0.05)", overflow: "hidden" }}>
+                    <div style={{ height: "100%", borderRadius: 2, width: `${riskIdx}%`, background: rb.color, transition: "width 0.6s cubic-bezier(0.16,1,0.3,1)" }} />
+                  </div>
+                  {vsOrganic > 1 && (
+                    <div style={{ fontSize: 12, color: "#a1a1aa", lineHeight: 1.55, marginTop: 10 }}>
+                      <span style={{ color: rb.color, fontWeight: 500 }}>{vsOrganic}×</span> more chemical exposure than an organic-cotton equivalent at this usage.
+                    </div>
+                  )}
+                </div>
+
+                {bullets.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {bullets.map((b, i) => (
+                      <div key={`${activity}-${i}`} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                        <div style={{ width: 3, height: 3, borderRadius: "50%", background: rb.color, marginTop: 8, flexShrink: 0 }} />
+                        <div>
+                          <div style={{ fontSize: 12, color: "#d4d4d8", lineHeight: 1.6 }}>{b.text}</div>
+                          {b.source && (
+                            b.href
+                              ? <a href={b.href} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: "#71717a", textDecoration: "underline", textUnderlineOffset: 2, textDecorationColor: "rgba(255,255,255,0.15)", marginTop: 3, display: "inline-block" }}>{b.source}</a>
+                              : <div style={{ fontSize: 10, color: "#52525b", marginTop: 3 }}>{b.source}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── ACTIONS ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 28, paddingBottom: 12 }}>
           {primaryIsAlternatives ? (
             <button onClick={() => document.querySelector('[data-section="alternatives"]')?.scrollIntoView({ behavior: "smooth", block: "center" })} style={{
-              width: "100%", padding: "18px 24px",
-              background: "linear-gradient(135deg,#166534,#14532d)",
-              border: "1px solid rgba(22,101,52,0.4)", borderRadius: 16, cursor: "pointer",
-              fontFamily: "inherit", fontSize: 15, fontWeight: 700, color: "#4ade80",
+              width: "100%", padding: "16px 24px",
+              background: "#166534", border: "none", borderRadius: 14, cursor: "pointer",
+              fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "#fff",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             }}>
               See safer alternatives ↓
             </button>
           ) : (
             <button onClick={handleSave} style={{
-              width: "100%", padding: "18px 24px",
-              background: wardrobeSaved ? "rgba(74,222,128,0.08)" : "linear-gradient(135deg,#166534,#14532d)",
-              border: `1px solid ${wardrobeSaved ? "rgba(74,222,128,0.3)" : "rgba(22,101,52,0.4)"}`,
-              borderRadius: 16, cursor: "pointer",
-              fontFamily: "inherit", fontSize: 15, fontWeight: 700, color: "#4ade80",
+              width: "100%", padding: "16px 24px",
+              background: wardrobeSaved ? "transparent" : "#166534",
+              border: wardrobeSaved ? "0.5px solid rgba(74,222,128,0.3)" : "none",
+              borderRadius: 14, cursor: "pointer",
+              fontFamily: "inherit", fontSize: 14, fontWeight: 600,
+              color: wardrobeSaved ? "#4ade80" : "#fff",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             }}>
-              {wardrobeSaved ? "Saved ✓" : (
-                <>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg>
-                  Add to wardrobe
-                </>
-              )}
+              {wardrobeSaved ? "Saved ✓" : "Add to wardrobe"}
             </button>
           )}
           <button onClick={onShare} style={{
-            width: "100%", padding: "16px 24px",
-            background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 16, cursor: "pointer",
-            fontFamily: "inherit", fontSize: 14, fontWeight: 600, color: "#e8e8e8",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            width: "100%", padding: "14px 24px",
+            background: "transparent", border: "0.5px solid rgba(255,255,255,0.1)",
+            borderRadius: 14, cursor: "pointer",
+            fontFamily: "inherit", fontSize: 13, fontWeight: 500, color: "#d4d4d8",
           }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" /></svg>
             Share results
           </button>
         </div>
@@ -543,8 +570,8 @@ export default function ResultsPage({
         {/* Footer row */}
         <div style={{
           display: "flex", justifyContent: "space-between", alignItems: "center",
-          gap: 12, marginTop: 20, paddingTop: 18,
-          borderTop: "1px solid rgba(255,255,255,0.06)",
+          gap: 12, paddingTop: 18,
+          borderTop: "0.5px solid rgba(255,255,255,0.06)",
           flexWrap: "wrap",
         }}>
           <PrivacyAffordance isPublic={isPublic} onToggle={() => setIsPublic(!isPublic)} />
@@ -552,15 +579,16 @@ export default function ResultsPage({
             onClick={() => setDisputeOpen(true)}
             style={{
               background: "transparent", border: "none", padding: 0,
-              fontFamily: "inherit", fontSize: 11, color: "#a1a1aa",
-              textDecoration: "underline", textUnderlineOffset: 2, cursor: "pointer",
+              fontFamily: "inherit", fontSize: 11, color: "#71717a",
+              textDecoration: "underline", textUnderlineOffset: 2,
+              textDecorationColor: "rgba(255,255,255,0.15)", cursor: "pointer",
             }}
           >Dispute this score</button>
         </div>
 
         {/* Disclaimer */}
-        <div style={{ textAlign: "center", padding: "24px 16px 40px" }}>
-          <div style={{ fontSize: 12, color: "#a1a1aa", lineHeight: 1.7, maxWidth: 500, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", padding: "20px 0 40px" }}>
+          <div style={{ fontSize: 11, color: "#71717a", lineHeight: 1.7, maxWidth: 480, margin: "0 auto" }}>
             Scores are based on published regulatory data, NGO research, and peer-reviewed studies. Chemical presence is inferred from material composition — actual levels vary by manufacturer.
           </div>
           <div style={{ fontSize: 10, color: "#52525b", marginTop: 10, letterSpacing: 0.4 }}>

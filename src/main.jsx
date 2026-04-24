@@ -4,6 +4,7 @@ import CleanWearApp from './CleanWear.jsx'
 import LandingPage from './LandingPage.jsx'
 import AuthCallback from './pages/AuthCallback.jsx'
 import SharePage from './pages/SharePage.jsx'
+import FeedPage from './pages/FeedPage.jsx'
 import { AuthProvider } from './contexts/AuthContext.jsx'
 import './design/tokens.css'
 
@@ -11,6 +12,7 @@ function resolveView() {
   const p = window.location.pathname;
   if (p === '/auth/callback') return 'auth-callback';
   if (p.startsWith('/s/')) return 'share';
+  if (p === '/feed' || p === '/feed/') return 'feed';
   return window.location.hash === '#app' ? 'app' : 'landing';
 }
 
@@ -29,6 +31,7 @@ function Root() {
 
   if (view === 'auth-callback') return <AuthCallback />;
   if (view === 'share') return <SharePage />;
+  if (view === 'feed') return <FeedPage />;
   if (view === 'app') return <CleanWearApp />;
   return <LandingPage onLaunchApp={() => { window.location.hash = '#app'; }} />;
 }

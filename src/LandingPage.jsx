@@ -533,6 +533,85 @@ export default function LandingPage({ onLaunchApp }) {
         `}</style>
       </section>
 
+      {/* ═══ BODY ABSORPTION — editorial, "what most people get wrong" ═══ */}
+      <section style={{ padding: "96px 24px 0", background: "var(--cw-bg-primary, #fff)" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            fontFamily: F, fontSize: 11, fontWeight: 500,
+            letterSpacing: "0.1em", textTransform: "uppercase",
+            color: "var(--cw-text-tertiary, #9B9A92)", marginBottom: 14,
+          }}>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--cw-brand-emerald, #166534)" }} />
+            What most people get wrong
+          </div>
+          <h2 style={{
+            fontFamily: S, fontSize: "clamp(28px, 4.2vw, 40px)", fontWeight: 400,
+            color: "var(--cw-text-primary, #1a1a1a)", margin: "0 0 18px",
+            letterSpacing: "-0.01em", lineHeight: 1.15,
+          }}>
+            Your skin is not a barrier.{" "}
+            <em style={{ fontStyle: "italic", color: "var(--cw-brand-emerald, #166534)" }}>It's a sponge.</em>
+          </h2>
+          <p style={{
+            fontSize: 16, lineHeight: 1.7, color: "var(--cw-text-secondary, #6A6A66)",
+            margin: "0 0 28px", maxWidth: 620,
+          }}>
+            Clothing chemicals don't just sit on the surface. Heat, sweat, and friction — exactly what happens when you exercise, sleep, or carry a baby — open the stratum corneum and carry molecules into the bloodstream within hours.
+          </p>
+
+          {/* Dark editorial timeline */}
+          <div style={{
+            background: "var(--cw-bg-dark, #030A03)", borderRadius: 12,
+            padding: "32px 36px", color: "var(--cw-text-inv-primary, #F5F5F0)",
+            fontFamily: F,
+          }}>
+            <div style={{
+              display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 32,
+            }} className="cw-timeline-grid">
+              {[
+                { t: "0:00", title: "You put on the shirt", desc: "Contact begins. Molecules on fabric surface start diffusing into the outer skin layer." },
+                { t: "0:30", title: "Sweat opens the barrier", desc: "Perspiration softens the stratum corneum. Dermal absorption rate climbs — up to several times baseline." },
+                { t: "8:00", title: "Chemicals in bloodstream", desc: "PFAS, phthalates, and BPA metabolites detectable in blood and urine samples in published dermal studies." },
+              ].map((s, i) => (
+                <div key={i} style={{
+                  paddingLeft: i === 0 ? 0 : 24,
+                  borderLeft: i === 0 ? "none" : "0.5px solid rgba(245,245,240,0.12)",
+                }}>
+                  <div style={{
+                    fontFamily: S, fontSize: 24, fontWeight: 400,
+                    color: "var(--cw-text-inv-primary, #F5F5F0)", letterSpacing: "-0.02em", lineHeight: 1,
+                    marginBottom: 10,
+                  }}>{s.t}</div>
+                  <div style={{
+                    fontSize: 14, fontWeight: 500, color: "var(--cw-text-inv-primary, #F5F5F0)",
+                    marginBottom: 6,
+                  }}>{s.title}</div>
+                  <div style={{
+                    fontSize: 12, lineHeight: 1.6, color: "rgba(245,245,240,0.7)",
+                  }}>{s.desc}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{
+              marginTop: 24, paddingTop: 16,
+              borderTop: "0.5px solid rgba(245,245,240,0.08)",
+              fontSize: 11, color: "rgba(245,245,240,0.5)",
+              fontStyle: "italic",
+            }}>
+              Timeline reflects published dermal absorption literature · specific citations pending audit per our methodology.
+            </div>
+          </div>
+        </div>
+        <style>{`
+          @media (max-width: 720px) {
+            .cw-timeline-grid { grid-template-columns: 1fr !important; gap: 20px !important; }
+            .cw-timeline-grid > div { padding-left: 0 !important; border-left: none !important; padding-top: 20px; border-top: 0.5px solid rgba(245,245,240,0.12); }
+            .cw-timeline-grid > div:first-child { padding-top: 0; border-top: none; }
+          }
+        `}</style>
+      </section>
+
       {/* ═══ METHODOLOGY — editorial, numbered, offset ═══ */}
       <section id="methodology" style={{ padding: "100px 24px", background: "#f6f9f4", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", top: 40, right: -100, width: 360, height: 360, borderRadius: "50%", background: "rgba(22,163,74,0.06)", filter: "blur(10px)" }} />
@@ -807,6 +886,86 @@ export default function LandingPage({ onLaunchApp }) {
             CleanWear exists so you can make informed choices about what touches your skin every single day.
           </p>
         </div>
+      </section>
+
+      {/* ═══ THE REGULATORY GAP ═══ */}
+      <section style={{ padding: "96px 24px", background: "var(--cw-bg-primary, #fff)" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            fontFamily: F, fontSize: 11, fontWeight: 500,
+            letterSpacing: "0.1em", textTransform: "uppercase",
+            color: "var(--cw-text-tertiary, #9B9A92)", marginBottom: 14,
+          }}>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--cw-brand-emerald, #166534)" }} />
+            The regulatory gap
+          </div>
+          <h2 style={{
+            fontFamily: S, fontSize: "clamp(28px, 4.2vw, 40px)", fontWeight: 400,
+            color: "var(--cw-text-primary, #1a1a1a)", margin: "0 0 36px",
+            letterSpacing: "-0.01em", lineHeight: 1.15, maxWidth: 720,
+          }}>
+            The EU has banned over 1,000 chemicals in clothing.{" "}
+            <em style={{ fontStyle: "italic", color: "var(--cw-brand-emerald, #166534)" }}>The US has banned almost none.</em>
+          </h2>
+
+          {/* Bar chart */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 18, marginBottom: 28 }}>
+            {[
+              { country: "European Union", authority: "EU REACH · Annex XVII", count: 1000, pct: 100, label: "1,000+" },
+              { country: "Canada", authority: "CEPA · Prohibition of Certain Toxic Substances", count: 87, pct: 9, label: "87" },
+              { country: "Japan", authority: "Act on the Control of Household Products", count: 42, pct: 4, label: "42" },
+              { country: "United States", authority: "CPSIA · scattered state-level additions", count: 5, pct: 1, label: "~5" },
+            ].map((row, i) => (
+              <div key={i} style={{ display: "grid", gridTemplateColumns: "200px 1fr 72px", gap: 18, alignItems: "center" }} className="cw-gap-row">
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "var(--cw-text-primary, #1a1a1a)" }}>{row.country}</div>
+                  <div style={{ fontSize: 11, color: "var(--cw-text-tertiary, #9B9A92)", marginTop: 2 }}>{row.authority}</div>
+                </div>
+                <div style={{ height: 28, background: "var(--cw-bg-secondary, #F5F3E8)", borderRadius: 4, position: "relative", overflow: "hidden" }}>
+                  <div style={{
+                    position: "absolute", inset: 0, width: `${Math.max(row.pct, 1.5)}%`,
+                    background: i === 0 ? "var(--cw-brand-emerald, #166534)" : i === 3 ? "#A32D2D" : "#6A6A66",
+                    borderRadius: 4, transition: "width 0.8s ease",
+                  }} />
+                </div>
+                <div style={{
+                  fontFamily: S, fontSize: 22, fontWeight: 400,
+                  color: i === 0 ? "var(--cw-brand-emerald, #166534)" : i === 3 ? "#A32D2D" : "var(--cw-text-primary, #1a1a1a)",
+                  textAlign: "right", letterSpacing: "-0.01em",
+                }}>{row.label}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--cw-text-tertiary, #9B9A92)", marginBottom: 36, fontStyle: "italic" }}>
+            Restricted-substance counts compiled from each jurisdiction's textile regulation · figures reflect adult apparel scope.
+          </div>
+
+          {/* Closing dark block */}
+          <div style={{
+            background: "var(--cw-bg-dark, #030A03)", borderRadius: 12,
+            padding: "28px 32px", color: "var(--cw-text-inv-primary, #F5F5F0)",
+            fontFamily: F,
+          }}>
+            <div style={{
+              fontFamily: S, fontSize: 22, fontWeight: 400, color: "var(--cw-text-inv-primary, #F5F5F0)",
+              lineHeight: 1.35, letterSpacing: "-0.01em",
+            }}>
+              CleanWear scores use <em style={{ fontStyle: "italic" }}>EU standards</em>, not US ones.
+            </div>
+            <div style={{
+              fontSize: 14, lineHeight: 1.7, color: "rgba(245,245,240,0.7)", marginTop: 10,
+            }}>
+              If a chemical would be banned or restricted in Germany, France, or Sweden, we count it against the garment's score — regardless of whether the US has decided to act yet.
+            </div>
+          </div>
+        </div>
+        <style>{`
+          @media (max-width: 640px) {
+            .cw-gap-row { grid-template-columns: 1fr auto !important; }
+            .cw-gap-row > div:nth-child(2) { grid-column: 1 / -1; order: 3; }
+          }
+        `}</style>
       </section>
 
       {/* ═══ A 100% INDEPENDENT PROJECT — asymmetric card grid ═══ */}

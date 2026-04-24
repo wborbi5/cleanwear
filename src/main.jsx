@@ -3,25 +3,32 @@ import ReactDOM from 'react-dom/client'
 import CleanWearApp from './CleanWear.jsx'
 import LandingPage from './LandingPage.jsx'
 import AuthCallback from './pages/AuthCallback.jsx'
+import SharePage from './pages/SharePage.jsx'
 import { AuthProvider } from './contexts/AuthContext.jsx'
+import './design/tokens.css'
+
+function resolveView() {
+  const p = window.location.pathname;
+  if (p === '/auth/callback') return 'auth-callback';
+  if (p.startsWith('/s/')) return 'share';
+  return window.location.hash === '#app' ? 'app' : 'landing';
+}
 
 function Root() {
-  const [view, setView] = useState(() => {
-    // Handle /auth/callback route
-    if (window.location.pathname === '/auth/callback') return 'auth-callback';
-    return window.location.hash === '#app' ? 'app' : 'landing';
-  });
+  const [view, setView] = useState(resolveView);
 
   useEffect(() => {
-    const onHash = () => {
-      if (window.location.pathname === '/auth/callback') return;
-      setView(window.location.hash === '#app' ? 'app' : 'landing');
+    const onChange = () => setView(resolveView());
+    window.addEventListener('hashchange', onChange);
+    window.addEventListener('popstate', onChange);
+    return () => {
+      window.removeEventListener('hashchange', onChange);
+      window.removeEventListener('popstate', onChange);
     };
-    window.addEventListener('hashchange', onHash);
-    return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
   if (view === 'auth-callback') return <AuthCallback />;
+  if (view === 'share') return <SharePage />;
   if (view === 'app') return <CleanWearApp />;
   return <LandingPage onLaunchApp={() => { window.location.hash = '#app'; }} />;
 }

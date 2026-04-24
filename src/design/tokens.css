@@ -1,0 +1,56 @@
+/* ============================================================
+   CleanWear — Design Tokens (v1.0 per design handoff doc)
+   See docs/design-handoff.md Part 2 for token spec.
+   ============================================================ */
+
+:root {
+  /* Surface */
+  --cw-bg-primary: #FFFFFF;
+  --cw-bg-secondary: #F5F3E8;
+  --cw-bg-tertiary: #FAF9F2;
+  --cw-bg-dark: #030A03;
+
+  /* Brand */
+  --cw-brand-emerald: #166534;
+  --cw-brand-emerald-hover: #13522A;
+  --cw-brand-green: #4ADE80;
+  --cw-brand-green-tint: rgba(22, 101, 52, 0.04);
+
+  /* Score bands */
+  --cw-score-high-dark: #F87171;
+  --cw-score-high-light: #A32D2D;
+  --cw-score-high-bg: rgba(248, 113, 113, 0.12);
+  --cw-score-mod-dark: #C9A84C;
+  --cw-score-mod-light: #854F0B;
+  --cw-score-mod-bg: rgba(201, 168, 76, 0.15);
+  --cw-score-low: #166534;
+  --cw-score-low-bg: rgba(22, 101, 52, 0.06);
+
+  /* Text */
+  --cw-text-primary: #1A1A1A;
+  --cw-text-secondary: #6A6A66;
+  --cw-text-tertiary: #9B9A92;
+  --cw-text-inv-primary: #F5F5F0;
+  --cw-text-inv-secondary: rgba(245, 245, 240, 0.7);
+  --cw-text-inv-tertiary: rgba(245, 245, 240, 0.5);
+
+  /* Borders — all 0.5px, load-bearing per Principle 1 */
+  --cw-border-tertiary: 0.5px solid rgba(26, 26, 26, 0.08);
+  --cw-border-secondary: 0.5px solid rgba(26, 26, 26, 0.15);
+  --cw-border-accent: 0.5px solid rgba(22, 101, 52, 0.25);
+  --cw-border-inv-tertiary: 0.5px solid rgba(245, 245, 240, 0.08);
+
+  /* Type */
+  --cw-font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --cw-font-serif: 'Playfair Display', Georgia, serif;
+
+  /* Radius */
+  --cw-radius-sm: 3px;
+  --cw-radius-md: 6px;
+  --cw-radius-lg: 12px;
+  --cw-radius-xl: 18px;
+  --cw-radius-pill: 20px;
+}
+
+/* Utility — editorial ital used sparingly */
+.cw-ital { font-family: var(--cw-font-serif); font-style: italic; font-weight: 400; }

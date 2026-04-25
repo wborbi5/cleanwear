@@ -463,6 +463,11 @@ export default function CleanWearApp() {
         if (!user) addScanCredit();
         window.posthog?.capture("results_shared", { product: result?.product_name, score: score?.overall });
       }}
+      wardrobe={wardrobe}
+      avg={avg}
+      added={added}
+      onAddToWardrobe={addWard}
+      onSignIn={() => { setAuthTrigger("wardrobe_save"); setAuthModalOpen(true); }}
     />
     <ScanLimitModal
       isOpen={scanLimitOpen}

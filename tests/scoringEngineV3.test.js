@@ -371,6 +371,94 @@ const brands = {
   );
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+// M10 cert tests: 5 certifications newly assessed for C2 priority-2
+// ═══════════════════════════════════════════════════════════════
+
+// TC-1: MADE SAFE — brand-wide cert → C2 priority-2, score 78
+{
+  const brand = { id:"made_safe_brand", name:"MADE SAFE Brand", tier:"safe",
+    certs:["MADE SAFE"], nrdc_pfas_rating:null, good_on_you_rating:null };
+  const product = { product_name:"MADE SAFE Organic Tee", brand:"MADE SAFE Brand",
+    category:"Casual", materials:[{name:"Organic Cotton",percentage:100}],
+    chemicals:[], certifications:[] };
+  const result = scoreV3(product, brand);
+  const c2 = result?.components?.find(c => c.type === "brand_safety");
+  assert("TC-1 MADE SAFE — C2 fires at priority 2",
+    c2?.priority_level_used === 2, `got priority ${c2?.priority_level_used}`);
+  assert("TC-1 MADE SAFE — C2 score 78",
+    Math.abs((c2?.score ?? 0) - 78) <= 1, `got ${c2?.score}`);
+  assert("TC-1 MADE SAFE — signal key contains made_safe",
+    (c2?.signal_key || "").includes("made_safe"), `got ${c2?.signal_key}`);
+}
+
+// TC-2: Cradle to Cradle — brand-wide cert → C2 priority-2, score 72
+{
+  const brand = { id:"c2c_brand", name:"C2C Brand", tier:"safe",
+    certs:["Cradle to Cradle"], nrdc_pfas_rating:null, good_on_you_rating:null };
+  const product = { product_name:"C2C Certified Tee", brand:"C2C Brand",
+    category:"Casual", materials:[{name:"Organic Cotton",percentage:100}],
+    chemicals:[], certifications:[] };
+  const result = scoreV3(product, brand);
+  const c2 = result?.components?.find(c => c.type === "brand_safety");
+  assert("TC-2 C2C — C2 fires at priority 2",
+    c2?.priority_level_used === 2, `got priority ${c2?.priority_level_used}`);
+  assert("TC-2 C2C — C2 score 72",
+    Math.abs((c2?.score ?? 0) - 72) <= 1, `got ${c2?.score}`);
+}
+
+// TC-3: Fair Trade only — must NOT produce priority-2 C2
+// Fair Trade has no chemical scope; should fall to GOY/NRDC (priority 3) or null
+{
+  const brand = { id:"fair_trade_only", name:"Fair Trade Only Brand", tier:"moderate",
+    certs:["Fair Trade"], nrdc_pfas_rating:null,
+    good_on_you_rating:"good", goy_year:2024 };
+  const product = { product_name:"Fair Trade Tee", brand:"Fair Trade Only Brand",
+    category:"Casual", materials:[{name:"Cotton",percentage:100}],
+    chemicals:[], certifications:[] };
+  const result = scoreV3(product, brand);
+  const c2 = result?.components?.find(c => c.type === "brand_safety");
+  assert("TC-3 Fair Trade — does NOT fire at priority 2 (no chemical scope)",
+    c2?.priority_level_used !== 2,
+    `priority_level_used was 2 — Fair Trade should not produce C2 priority-2`);
+  // Should fall to GOY (priority 3)
+  assert("TC-3 Fair Trade — falls through to GOY priority 3",
+    c2?.priority_level_used === 3, `got priority ${c2?.priority_level_used}`);
+}
+
+// TC-4: B Corp only — must NOT produce priority-2 C2
+{
+  const brand = { id:"bcorp_only", name:"B Corp Only Brand", tier:"safe",
+    certs:["B Corp"], nrdc_pfas_rating:null,
+    good_on_you_rating:"great", goy_year:2024 };
+  const product = { product_name:"B Corp Tee", brand:"B Corp Only Brand",
+    category:"Casual", materials:[{name:"Cotton",percentage:100}],
+    chemicals:[], certifications:[] };
+  const result = scoreV3(product, brand);
+  const c2 = result?.components?.find(c => c.type === "brand_safety");
+  assert("TC-4 B Corp — does NOT fire at priority 2 (no chemical scope)",
+    c2?.priority_level_used !== 2,
+    `priority_level_used was 2 — B Corp should not produce C2 priority-2`);
+}
+
+// TC-5: ZQ Merino only — must NOT produce priority-2 C2
+{
+  const brand = { id:"zq_only", name:"ZQ Merino Brand", tier:"moderate",
+    certs:["ZQ Merino"], nrdc_pfas_rating:null, good_on_you_rating:null };
+  const product = { product_name:"ZQ Merino Base Layer", brand:"ZQ Merino Brand",
+    category:"Athletic", materials:[{name:"Merino Wool",percentage:100}],
+    chemicals:[], certifications:[] };
+  const result = scoreV3(product, brand);
+  const c2 = result?.components?.find(c => c.type === "brand_safety");
+  // ZQ Merino: no GOY or NRDC → C2 should be null (Tier 3)
+  assert("TC-5 ZQ Merino — does NOT fire at priority 2 (farm-level only, no finished-garment chemical scope)",
+    c2?.priority_level_used !== 2,
+    `priority_level_used was 2 — ZQ Merino should not produce C2 priority-2`);
+  assert("TC-5 ZQ Merino — C2 is null (no independent rating signals)",
+    c2 === undefined || c2 === null,
+    `C2 component present: priority ${c2?.priority_level_used}`);
+}
 // ── Report ────────────────────────────────────────────────────
 console.log("\n=== CleanWear V3 Scoring Engine — Test Results ===");
 console.log(`Passed: ${passed}`);

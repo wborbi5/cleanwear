@@ -100,7 +100,17 @@ Recognized certifications (must be validated against the issuing registry before
 
 Certifications that are not on this list are stored as metadata but do not affect scoring.
 
-**Equivalence note:** Each certification on this list is treated equivalently for the purpose of the cert bonus (§E.2 Step 3) and rule suppression (§D). Specifically, GRS (Global Recycled Standard) certification on a recycled fiber product (e.g., recycled cashmere, recycled polyester) contributes the same cert bonus as bluesign or OEKO-TEX, and may suppress chemical flags per the rules in §D, on the same basis as those certifications. GRS verifies recycled content and supply chain traceability; it does not directly test for chemical residues. The equivalence applies to the cert bonus mechanism only; product-specific lab testing (Tier 1 confidence) is not triggered by GRS.
+**Two tiers of recognition:** Certifications on this list are recognized in two distinct ways, and these are NOT equivalent:
+
+1. **Cert bonus + C2 brand signal (priority-2):** Certifications with genuine chemical safety scope — meaning they restrict or assess specific substances in finished textile products — produce both the C1 cert bonus (+8 per cert, capped at +20) AND a priority-2 C2 brand signal. These are: OEKO-TEX Standard 100, GOTS, bluesign, GRS, MADE SAFE, Cradle to Cradle.
+
+2. **Cert bonus only (no C2 signal):** Certifications whose scope is primarily labor rights, animal welfare, business ethics, or supply chain traceability — not finished-product chemical safety — contribute the C1 cert bonus only. They do NOT produce a priority-2 C2 brand signal. These are: Fair Trade, B Corp, ZQ Merino.
+
+   Rationale: Fair Trade's chemical scope is limited to worker safe-handling practices at factories; it does not test finished garments for chemical residues. B Corp is a business ethics assessment with no substance-specific restrictions. ZQ Merino certifies raw wool fiber at the farm level and does not govern chemical use in spinning, dyeing, or finishing. See `implementation-notes/cert_c2_research.md` for sourced justification.
+
+**GRS and MADE SAFE note:** GRS (Global Recycled Standard) and MADE SAFE use ingredient-level upstream control rather than finished-product residue testing, on the same basis as bluesign. Both are treated equivalently to bluesign/OEKO-TEX for C2 signal purposes. MADE SAFE screens 15,000+ substances; GRS covers recycled content verification plus chemical restrictions.
+
+**Cradle to Cradle tier caveat:** Cradle to Cradle's Material Health category scores from 75% material characterization (Bronze) to 100% including process chemistry (Platinum). The default C2 score of 72 reflects tier-unspecified conservative scoring. When a brand's C2C tier is known and is Gold or Platinum, the registrar may manually assign a higher score. Specifically, GRS (Global Recycled Standard) certification on a recycled fiber product (e.g., recycled cashmere, recycled polyester) contributes the same cert bonus as bluesign or OEKO-TEX, and may suppress chemical flags per the rules in §D, on the same basis as those certifications. GRS verifies recycled content and supply chain traceability; it does not directly test for chemical residues. The equivalence applies to the cert bonus mechanism only; product-specific lab testing (Tier 1 confidence) is not triggered by GRS.
 
 ---
 

@@ -32,8 +32,10 @@ const CERT_SCORES = {
   "gots": 80,
   "oeko-tex": 78,
   "oeko-tex standard 100": 78,
+  "made safe": 78, // 15,000+ banned substances; ingredient-level hazard screening; comparable to OEKO-TEX
   "bluesign": 75,
   "grs": 75,  // Global Recycled Standard — treated equivalently per §B.2 note (v2.2)
+  "cradle to cradle": 72, // Material Health category; tier-unspecified; design-phase hazard assessment
 };
 
 // ── "(select)" normalization ──────────────────────────────────
@@ -69,6 +71,8 @@ function certUrl(name) {
   if (name.includes("oeko"))       return "https://www.oeko-tex.com/en/label-check";
   if (name.includes("bluesign"))   return "https://www.bluesign.com";
   if (name.includes("grs"))        return "https://textileexchange.org/grs";
+  if (name.includes("made safe"))  return "https://madesafe.org";
+  if (name.includes("cradle"))     return "https://c2ccertified.org";
   return null;
 }
 
@@ -86,6 +90,19 @@ function lookupPriority2(brand) {
   if (hasBrandwideCert(brand, "grs")) {
     return { score: CERT_SCORES["grs"], source: "GRS (Global Recycled Standard, brand-level)", sourceUrl: "https://textileexchange.org/grs", priority_level: 2, signal_key: "brand_grs" };
   }
+  // MADE SAFE: 15,000+ substance screen; comparable to OEKO-TEX for chemical safety purposes
+  if (hasBrandwideCert(brand, "made safe")) {
+    return { score: CERT_SCORES["made safe"], source: "MADE SAFE (brand-level)", sourceUrl: "https://madesafe.org", priority_level: 2, signal_key: "brand_made_safe" };
+  }
+  // Cradle to Cradle: Material Health category covers 21 human/environmental endpoints
+  // Score is tier-unspecified (Bronze=low, Platinum=very high); 72 is conservative
+  if (hasBrandwideCert(brand, "cradle to cradle") || hasBrandwideCert(brand, "c2c")) {
+    return { score: CERT_SCORES["cradle to cradle"], source: "Cradle to Cradle (brand-level)", sourceUrl: "https://c2ccertified.org", priority_level: 2, signal_key: "brand_c2c" };
+  }
+  // NOTE: Fair Trade, B Corp, ZQ Merino do NOT produce C2 priority-2 signals.
+  // They contribute to the cert bonus in C1 (+8 per cert, capped at +20) but their
+  // scope is labor/ethics/traceability, not finished-product chemical safety.
+  // See implementation-notes/cert_c2_research.md for rationale.
   return null;
 }
 

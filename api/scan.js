@@ -176,6 +176,14 @@ export default async function handler(req, res) {
   // LAYER 5: Keyword fallback (no barcode match at all)
   // ========================================
   const fb = buildFallback(query, isBarcode)
+
+  // Unknown brand — don't fabricate a score. Log the request and tell the client.
+  if (fb._unknown) {
+    await logResearchRequest(q, null)
+    return res.status(200).json(fb)
+  }
+
+  // Known brand but specific product not in database — cache with brand-level note
   await cacheProduct(q, isBarcode, fb)
   return res.status(200).json({ ...fb, _source: 'fallback' })
 }
@@ -318,21 +326,67 @@ function buildFallback(query, isBarcode) {
   else if (isFastFashion) { materials.push({ name: 'Polyester', percentage: 65 }, { name: 'Cotton', percentage: 30 }, { name: 'Elastane', percentage: 5 }); chemicals.push('antimony', 'microplastics', 'formaldehyde', 'phthalates', 'azo_dyes', 'heavy_metals') }
   else { materials.push({ name: 'Cotton', percentage: 60 }, { name: 'Polyester', percentage: 35 }, { name: 'Elastane', percentage: 5 }); chemicals.push('antimony', 'microplastics', 'formaldehyde', 'phthalates') }
 
-  const brand = extractBrand(q) || 'Unknown Brand'
+  const brand = extractBrand(q)
+
+  // Brand not recognized — do not fabricate a score.
+  // Return an unknown signal so the client can show the research-request screen.
+  if (!brand) {
+    return { _unknown: true, query: q, _source: 'unknown' }
+  }
+
   const productName = isBarcode ? `Product (Barcode: ${query})` : query.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
 
   return {
-    product_name: productName, brand,
+    product_name: productName,
+    brand,
     category: isAthletic ? 'Athletic' : 'Casual',
     materials, chemicals,
     certifications: hasOrganic ? ['oeko-tex'] : [],
     origin: isSafe ? 'Vietnam' : isFastFashion ? 'China' : 'Unknown',
-    health_notes: 'Analysis based on typical materials for this product type. Check your garment label for exact composition.',
+    health_notes: 'Score based on brand safety data and typical materials for this product type. Specific product not yet in database.',
     alternatives: [
       { name: 'Organic Cotton Tee', brand: 'Patagonia', reason: 'GOTS certified organic cotton, minimal chemical treatments, transparent supply chain.' },
       { name: 'Merino Wool Base Layer', brand: 'Smartwool', reason: 'Natural temperature regulation without synthetic chemicals.' },
       { name: 'Hemp Blend Tee', brand: 'prAna', reason: 'Hemp is naturally pest-resistant, requiring minimal pesticides and chemical processing.' },
     ],
+    _brand_level_only: true,
+  }
+}
+
+// ========================================
+// RESEARCH REQUEST LOGGER
+// Upsert by normalized query so we track demand count for prioritization.
+// ========================================
+async function logResearchRequest(query, brand) {
+  if (!supabase) return
+  try {
+    const normalized = query.toLowerCase().trim()
+    // Check if this query already exists
+    const { data: existing } = await supabase
+      .from('research_requests')
+      .select('id, request_count')
+      .eq('query', normalized)
+      .maybeSingle()
+
+    if (existing) {
+      await supabase
+        .from('research_requests')
+        .update({
+          request_count: (existing.request_count || 1) + 1,
+          last_requested_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id)
+    } else {
+      await supabase.from('research_requests').insert({
+        query: normalized,
+        brand: brand || null,
+        request_count: 1,
+        first_requested_at: new Date().toISOString(),
+        last_requested_at: new Date().toISOString(),
+      })
+    }
+  } catch (e) {
+    console.warn('[scan] Research request log failed:', e.message)
   }
 }
 

@@ -47,7 +47,7 @@ const MATERIAL_PROFILES = {
   cotton_poly: { name: "Cotton-Poly Blend", safety: 52, chems: ["Antimony", "Microplastics", "Formaldehyde"], risk: "moderate" },
   linen: { name: "Linen", safety: 90, chems: ["Minimal — very low risk"], risk: "minimal" },
   wool: { name: "Wool", safety: 85, chems: ["Minimal — very low risk"], risk: "minimal" },
-  rayon: { name: "Rayon/Viscose", safety: 45, chems: ["Carbon disulfide", "Sodium hydroxide"], risk: "moderate" },
+  rayon: { name: "Rayon/Viscose", safety: 45, chems: ["Processing residues (azo dyes possible — depends on dyeing)"], risk: "moderate" },
   silk: { name: "Silk", safety: 82, chems: ["Minimal — dye chemicals only"], risk: "low" },
 };
 

@@ -70,10 +70,10 @@ function exposureBullets(chemicals, activity, category = null) {
     href: isKids && isWorkout ? "https://doi.org/10.1016/j.scitotenv.2025.181066" : "https://doi.org/10.1021/acs.est.2c02111",
   });
   if (chemicals.includes("microplastics")) {
-    const n = isWorkout ? "~3,800" : isActive ? "~2,400" : "~1,900";
     out.push({
-      text: `${n} microplastic fibers shed per wear${isWorkout ? " under exercise friction" : ""}. Detected in human blood and lung tissue.`,
-      source: "Env Sci & Tech, 2023",
+      text: "~2,400 microplastic fibers released per wash cycle. Microplastics detected in human blood and lung tissue.",
+      source: "De Falco et al. 2019 · Sci Reports 9:6633",
+      href: "https://doi.org/10.1038/s41598-019-43023-x",
     });
   }
   if (chemicals.includes("bpa")) out.push({

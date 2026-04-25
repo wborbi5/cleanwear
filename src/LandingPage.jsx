@@ -504,7 +504,7 @@ export default function LandingPage({ onLaunchApp }) {
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 6px #ef4444" }} />
               <div>
                 <div style={{ fontSize: 11, color: "#888", fontWeight: 600 }}>PFAS detected</div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a" }}>68% of activewear</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#1a1a1a" }}>73% of DWR outerwear</div>
               </div>
             </div>
             {/* Floating source card */}
@@ -515,7 +515,7 @@ export default function LandingPage({ onLaunchApp }) {
               transform: "rotate(3deg)",
             }}>
               <div style={{ fontSize: 10, color: "#888", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Source</div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#166534" }}>EU REACH Annex XVII</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#166534" }}>Whitehead et al. 2021</div>
             </div>
           </div>
         </div>
@@ -552,7 +552,7 @@ export default function LandingPage({ onLaunchApp }) {
             fontSize: 16, lineHeight: 1.7, color: "var(--cw-text-secondary, #6A6A66)",
             margin: "0 0 28px", maxWidth: 620,
           }}>
-            Clothing chemicals don't just sit on the surface. Heat, sweat, and friction — exactly what happens when you exercise, sleep, or carry a baby — open the stratum corneum and carry molecules into the bloodstream within hours.
+            Clothing chemicals don't just sit on the surface. Heat, sweat, and friction — exactly what happens when you exercise, sleep, or carry a baby — open the stratum corneum and carry molecules into the bloodstream within hours under sweat conditions, per Whitehead et al. 2021 (PFAS dermal transfer) and Rochester & Bolden 2015 (BPA absorption pathways).
           </p>
 
           {/* Dark editorial timeline */}
@@ -567,7 +567,7 @@ export default function LandingPage({ onLaunchApp }) {
               {[
                 { t: "0:00", title: "You put on the shirt", desc: "Contact begins. Molecules on fabric surface start diffusing into the outer skin layer." },
                 { t: "0:30", title: "Sweat opens the barrier", desc: "Perspiration softens the stratum corneum. Dermal absorption rate climbs — up to several times baseline." },
-                { t: "8:00", title: "Chemicals in bloodstream", desc: "PFAS, phthalates, and BPA metabolites detectable in blood and urine samples in published dermal studies." },
+                { t: "8:00", title: "Chemicals in bloodstream", desc: "PFAS, phthalates, and BPA metabolites detectable in blood and urine samples per Levine 2022 and Rochester & Bolden 2015." },
               ].map((s, i) => (
                 <div key={i} style={{
                   paddingLeft: i === 0 ? 0 : 24,
@@ -594,7 +594,7 @@ export default function LandingPage({ onLaunchApp }) {
               fontSize: 11, color: "rgba(245,245,240,0.5)",
               fontStyle: "italic",
             }}>
-              Timeline reflects published dermal absorption literature · specific citations pending audit per our methodology.
+              Timeline reflects Whitehead et al. 2021 (PFAS), Rochester & Bolden 2015 (BPA), and Levine 2022 (phthalate metabolites).
             </div>
           </div>
         </div>

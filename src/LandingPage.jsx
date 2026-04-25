@@ -875,7 +875,7 @@ export default function LandingPage({ onLaunchApp }) {
             Why we built CleanWear
           </h2>
           <p style={{ fontSize: 16, color: "#666", lineHeight: 1.75, marginBottom: 24 }}>
-            We started CleanWear because we were shocked to learn what's in the clothes we wear every day. Formaldehyde in gym shirts. BPA in sports bras at 22× above safe limits. Carcinogens in children's pajamas.
+            We started CleanWear because we were shocked to learn what's in the clothes we wear every day. Formaldehyde in gym shirts. Formaldehyde in dress shirts at levels EU infant clothing limits prohibit. Carcinogens in children's pajamas.
           </p>
           <p style={{ fontSize: 16, color: "#666", lineHeight: 1.75, marginBottom: 24 }}>
             The EU protects its citizens with strict chemical regulations. The US has almost nothing for adult clothing. We believe that needs to change — and it starts with awareness.

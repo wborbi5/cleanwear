@@ -98,8 +98,7 @@ export default function SharePage() {
   const band = score >= 70 ? "low" : score >= 40 ? "mod" : "high";
   const sentence = alarmingSentence(band, topChemicalName);
 
-  // Mock collective strip — replace with real data via Supabase.
-  const collective = { scans: "1,247", avg: "34", rank: "#2 today" };
+  // collective strip removed — was hardcoded mock data (audit C3)
 
   // Safer alternative — later: query from productDatabase by category match.
   const alt = {
@@ -173,7 +172,6 @@ export default function SharePage() {
           productName={name}
           brand={brand}
           sentence={sentence}
-          collective={collective}
         />
 
         {/* ─── Chemical card ─── */}

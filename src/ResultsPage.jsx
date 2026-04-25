@@ -182,7 +182,7 @@ export default function ResultsPage({
   const verdict =
     ov <= 39
       ? (topChem
-          ? `Tested positive for ${topChem.info.name} — the kind of chemical the EU is phasing out.`
+          ? `Flagged for ${topChem.info.name} — the kind of chemical the EU is phasing out.`
           : "High chemical risk. Safer options exist at similar prices.")
       : ov <= 69
         ? "A few chemicals of concern. Safer alternatives exist at the same price."

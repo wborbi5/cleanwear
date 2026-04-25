@@ -24,9 +24,8 @@ export function getAvailableScans() {
 
 /** Check if user can scan */
 export function canScan(user) {
-  // Cap at FREE_SCAN_LIMIT for everyone (anonymous + authenticated)
-  // to keep API costs bounded pre-launch.
-  return getAvailableScans() > 0;
+  // Scan limit removed — unlimited scans for all users.
+  return true;
 }
 
 /** Increment scan count after a scan */
@@ -51,5 +50,5 @@ export function resetLocalScanData() {
 export function getScanStatus(user) {
   const used = getScanCount();
   const bonus = getBonusCredits();
-  return { unlimited: false, remaining: getAvailableScans(), used, bonus };
+  return { unlimited: true, remaining: Infinity, used, bonus };
 }

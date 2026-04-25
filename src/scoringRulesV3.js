@@ -182,14 +182,14 @@ export function ruleD5_Antimony(product) {
       chemical: "antimony", confidence: "low", rule: "D-5",
       suppressed_to_low: true,
       note: "Downgraded to LOW by OEKO-TEX/bluesign (tested at 30 mg/kg OEKO-TEX limit)",
-      source: "Biver et al. 2021 · Environ Pollution 289:117878 / OEKO-TEX Std 100",
+      source: "Biver et al. 2021 · Regul Toxicol Pharmacol 119:104824 / OEKO-TEX Std 100",
     };
   }
 
   // Recycled polyester: retain MEDIUM even if would otherwise downgrade
   return {
     chemical: "antimony", confidence: "medium", rule: "D-5",
-    source: "Biver et al. 2021 · Environ Pollution 289:117878 / OEKO-TEX Std 100 (30 mg/kg limit)",
+    source: "Biver et al. 2021 · Regul Toxicol Pharmacol 119:104824 / OEKO-TEX Std 100 (30 mg/kg limit)",
   };
 }
 

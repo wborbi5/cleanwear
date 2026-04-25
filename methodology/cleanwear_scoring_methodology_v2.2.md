@@ -110,7 +110,7 @@ Certifications that are not on this list are stored as metadata but do not affec
 
 **GRS and MADE SAFE note:** GRS (Global Recycled Standard) and MADE SAFE use ingredient-level upstream control rather than finished-product residue testing, on the same basis as bluesign. Both are treated equivalently to bluesign/OEKO-TEX for C2 signal purposes. MADE SAFE screens 15,000+ substances; GRS covers recycled content verification plus chemical restrictions.
 
-**Cradle to Cradle tier caveat:** Cradle to Cradle's Material Health category scores from 75% material characterization (Bronze) to 100% including process chemistry (Platinum). The default C2 score of 72 reflects tier-unspecified conservative scoring. When a brand's C2C tier is known and is Gold or Platinum, the registrar may manually assign a higher score. Specifically, GRS (Global Recycled Standard) certification on a recycled fiber product (e.g., recycled cashmere, recycled polyester) contributes the same cert bonus as bluesign or OEKO-TEX, and may suppress chemical flags per the rules in §D, on the same basis as those certifications. GRS verifies recycled content and supply chain traceability; it does not directly test for chemical residues. The equivalence applies to the cert bonus mechanism only; product-specific lab testing (Tier 1 confidence) is not triggered by GRS.
+**Cradle to Cradle tier caveat:** Cradle to Cradle's Material Health category scores from 75% material characterization (Bronze) to 100% including process chemistry (Platinum). The default C2 score of 72 reflects tier-unspecified conservative scoring. When a brand's C2C tier is known and is Gold or Platinum, the registrar may manually assign a higher score.
 
 ---
 

@@ -30,85 +30,125 @@ function getGrade(s) {
   return "F";
 }
 
-/** The visual card rendered in DOM (captured by html2canvas) */
+/** The visual card rendered in DOM (captured by html2canvas). 1080x1080 IG-ready. */
 function CardContent({ result, score }) {
   const s = score?.overall ?? 0;
   const color = getScoreColor(s);
-  const dark = s < 50;
-  const bg = dark ? "#030a03" : "#fafaf7";
-  const textMain = dark ? "#f4f4f5" : "#18181b";
-  const textSub = dark ? "#a1a1aa" : "#52525b";
+  const grade = getGrade(s);
+  // Always dark theme for maximum visual impact across all scores
+  const bg = "#030a03";
+  const textMain = "#ffffff";
+  const textSub = "#9ca3af";
+  const textFaint = "#6b8f6b";
+
+  const brand = result?.brand || "";
+  const product = result?.product_name || "Unknown product";
+
+  // Pick up to 3 sources actually cited
+  const sources = (score?.v2?.components || [])
+    .map((c) => c.source)
+    .filter(Boolean)
+    .slice(0, 3);
 
   return (
     <div style={{
       width: 1080, height: 1080, background: bg,
-      display: "flex", flexDirection: "column", justifyContent: "space-between",
-      padding: 80, fontFamily: "'Plus Jakarta Sans', sans-serif",
+      fontFamily: "'Plus Jakarta Sans', sans-serif",
       position: "relative", overflow: "hidden",
+      color: textMain,
     }}>
       {/* Decorative glow */}
       <div style={{
-        position: "absolute", top: -200, right: -200,
-        width: 600, height: 600, borderRadius: "50%",
-        background: `radial-gradient(circle, ${color}15, transparent 70%)`,
+        position: "absolute", top: -300, right: -300,
+        width: 900, height: 900, borderRadius: "50%",
+        background: `radial-gradient(circle, ${color}22, transparent 70%)`,
+      }} />
+      {/* Subtle grid */}
+      <div style={{
+        position: "absolute", inset: 0, opacity: 0.06,
+        backgroundImage: "linear-gradient(#ffffff 1px, transparent 1px), linear-gradient(90deg, #ffffff 1px, transparent 1px)",
+        backgroundSize: "80px 80px",
       }} />
 
-      {/* Top: Logo */}
-      <div style={{ display: "flex", alignItems: "center", gap: 16, zIndex: 1 }}>
-        <div style={{
-          width: 52, height: 52, borderRadius: 12,
-          background: "linear-gradient(135deg, #22c55e, #166534)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          color: "#fff", fontSize: 24, fontWeight: 900,
-        }}>C</div>
+      <div style={{ position: "relative", zIndex: 1, padding: 80, height: "100%", display: "flex", flexDirection: "column" }}>
+        {/* Top: wordmark */}
+        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: 16,
+            background: "linear-gradient(135deg, #22c55e, #166534)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#fff", fontSize: 32, fontWeight: 900,
+            boxShadow: "0 8px 32px rgba(34,197,94,0.35)",
+          }}>C</div>
+          <div>
+            <div style={{ fontSize: 34, fontWeight: 800, color: textMain, fontFamily: "'Playfair Display', Georgia, serif", letterSpacing: "-0.5px" }}>
+              Clean<em style={{ fontWeight: 500, color: "#4ade80" }}>Wear</em>
+            </div>
+            <div style={{ fontSize: 14, color: textFaint, letterSpacing: "3px", textTransform: "uppercase", fontWeight: 700, marginTop: 2 }}>
+              Chemical Safety Scanner
+            </div>
+          </div>
+        </div>
+
+        {/* Middle: score block, left-aligned editorial */}
+        <div style={{ marginTop: 90, flex: 1 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: textFaint, letterSpacing: "4px", textTransform: "uppercase", marginBottom: 20 }}>
+            Safety Score
+          </div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 36 }}>
+            <div style={{
+              fontSize: 320, fontWeight: 900, color, lineHeight: 0.85,
+              fontFamily: "'Playfair Display', Georgia, serif",
+              textShadow: `0 0 120px ${color}55`,
+            }}>{s}</div>
+            <div style={{ paddingBottom: 40 }}>
+              <div style={{ fontSize: 64, fontWeight: 800, color, lineHeight: 1, fontFamily: "'Playfair Display', Georgia, serif" }}>{grade}</div>
+              <div style={{ fontSize: 20, color: textSub, marginTop: 4, letterSpacing: "2px", textTransform: "uppercase", fontWeight: 700 }}>/ 100</div>
+            </div>
+          </div>
+
+          <div style={{ height: 2, background: `linear-gradient(90deg, ${color}, transparent)`, marginTop: 40, marginBottom: 40, maxWidth: 640 }} />
+
+          {brand && (
+            <div style={{ fontSize: 24, color: color, fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 10 }}>
+              {brand}
+            </div>
+          )}
+          <div style={{ fontSize: 44, fontWeight: 800, color: textMain, lineHeight: 1.2, maxWidth: 900 }}>
+            {product}
+          </div>
+          <div style={{ fontSize: 22, color: textSub, marginTop: 20, lineHeight: 1.5, maxWidth: 900 }}>
+            {getVerdict(s)}
+          </div>
+        </div>
+
+        {/* Bottom: sources + CTA */}
         <div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: textMain, letterSpacing: "-0.5px" }}>
-            Clean<em style={{ fontWeight: 400 }}>Wear</em>
+          {sources.length > 0 && (
+            <div style={{ marginBottom: 30 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: textFaint, letterSpacing: "3px", textTransform: "uppercase", marginBottom: 10 }}>
+                Sources
+              </div>
+              <div style={{ fontSize: 16, color: textSub, lineHeight: 1.4 }}>
+                {sources.join("  ·  ")}
+              </div>
+            </div>
+          )}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{
+              padding: "18px 36px",
+              background: "rgba(74,222,128,0.08)",
+              border: "1px solid rgba(74,222,128,0.25)",
+              borderRadius: 18,
+            }}>
+              <span style={{ fontSize: 22, color: "#4ade80", fontWeight: 700 }}>
+                Scan yours at cleanwear.app
+              </span>
+            </div>
+            <div style={{ fontSize: 14, color: textFaint, letterSpacing: "2px", textTransform: "uppercase", fontWeight: 700 }}>
+              Peer-reviewed<br/>research
+            </div>
           </div>
-          <div style={{ fontSize: 14, color: textSub, letterSpacing: "2px", textTransform: "uppercase" }}>
-            Chemical Safety Scanner
-          </div>
-        </div>
-      </div>
-
-      {/* Middle: Score + Product */}
-      <div style={{ textAlign: "center", zIndex: 1 }}>
-        <div style={{ fontSize: 18, fontWeight: 600, color: textSub, marginBottom: 20, letterSpacing: "3px", textTransform: "uppercase" }}>
-          Safety Score
-        </div>
-        <div style={{
-          fontSize: 220, fontWeight: 900, color, lineHeight: 1,
-          fontFamily: "'Playfair Display', serif",
-          textShadow: `0 0 80px ${color}40`,
-        }}>{s}</div>
-        <div style={{
-          fontSize: 40, fontWeight: 800, color,
-          marginTop: 8, letterSpacing: "4px",
-        }}>{getGrade(s)}</div>
-        <div style={{
-          fontSize: 36, fontWeight: 700, color: textMain,
-          marginTop: 40, lineHeight: 1.3,
-        }}>
-          {result?.brand} {result?.product_name}
-        </div>
-        <div style={{
-          fontSize: 22, color: textSub, marginTop: 12, lineHeight: 1.5,
-        }}>
-          {getVerdict(s)}
-        </div>
-      </div>
-
-      {/* Bottom: CTA */}
-      <div style={{ textAlign: "center", zIndex: 1 }}>
-        <div style={{
-          display: "inline-block", padding: "16px 40px",
-          background: dark ? "rgba(74,222,128,0.08)" : "rgba(22,101,52,0.06)",
-          border: `1px solid ${dark ? "rgba(74,222,128,0.2)" : "rgba(22,101,52,0.15)"}`,
-          borderRadius: 16,
-        }}>
-          <span style={{ fontSize: 20, color: dark ? "#4ade80" : "#166534", fontWeight: 600 }}>
-            Scan yours at cleanwear.app
-          </span>
         </div>
       </div>
     </div>
@@ -122,7 +162,7 @@ function ShareModal({ isOpen, onClose, cardRef, result, score, onShareComplete }
 
   if (!isOpen) return null;
 
-  const shareText = `My ${result?.brand} ${result?.product_name} scored ${score?.overall}/100 on CleanWear for chemical safety. Scan yours: https://cleanwear.app`;
+  const shareText = `My ${result?.brand || ""} ${result?.product_name || "item"} scored ${score?.overall}/100 on CleanWear — a chemical-safety score built from peer-reviewed research. Scan yours at https://cleanwear.app`.replace(/\s+/g," ").trim();
 
   const handleCopyLink = () => {
     navigator.clipboard?.writeText(shareText).then(() => {
@@ -174,18 +214,22 @@ function ShareModal({ isOpen, onClose, cardRef, result, score, onShareComplete }
           }}>&times;</button>
         </div>
 
-        {/* Card preview (scaled down) */}
+        {/* Card preview — properly contained so it doesn't collapse the modal */}
         <div style={{
-          borderRadius: 16, overflow: "hidden", marginBottom: 20,
-          transform: "scale(0.3)", transformOrigin: "top left",
-          width: 1080, height: 1080,
+          width: "100%", aspectRatio: "1 / 1", borderRadius: 16,
+          overflow: "hidden", marginBottom: 20, position: "relative",
+          background: "#030a03", border: "1px solid rgba(74,222,128,0.15)",
         }}>
-          <div ref={cardRef}>
-            <CardContent result={result} score={score} />
+          <div style={{
+            position: "absolute", top: 0, left: 0,
+            width: 1080, height: 1080,
+            transform: "scale(0.33)", transformOrigin: "top left",
+          }}>
+            <div ref={cardRef}>
+              <CardContent result={result} score={score} />
+            </div>
           </div>
         </div>
-        {/* Spacer to account for scaled card */}
-        <div style={{ height: 0, marginTop: -756 + 324 }} />
 
         {/* Share buttons */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -237,7 +281,7 @@ export default function ShareCard({ result, score, isOpen, onClose, onShareCompl
   }, [isOpen]);
 
   const handleShare = async () => {
-    const shareText = `My ${result?.brand} ${result?.product_name} scored ${score?.overall}/100 on CleanWear for chemical safety. Scan yours: https://cleanwear.app`;
+    const shareText = `My ${result?.brand || ""} ${result?.product_name || "item"} scored ${score?.overall}/100 on CleanWear — a chemical-safety score built from peer-reviewed research. Scan yours at https://cleanwear.app`.replace(/\s+/g," ").trim();
 
     // Try native share on mobile
     if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) {

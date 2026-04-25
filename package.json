@@ -12,6 +12,7 @@
     "@rollup/rollup-linux-x64-gnu": "^4.60.0",
     "@supabase/supabase-js": "^2.39.0",
     "barcode-detector": "^2.2.0",
+    "esbuild": "^0.28.0",
     "html2canvas": "^1.4.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

@@ -51,18 +51,23 @@ function riskBand(i) {
   return          { label: "LOW EXPOSURE",      color: "#4ade80", bg: "rgba(74,222,128,0.06)" };
 }
 
-function exposureBullets(chemicals, activity) {
+function exposureBullets(chemicals, activity, category = null) {
   const isWorkout = activity === "workout";
   const isActive = isWorkout || activity === "outdoor";
+  const isKids = (category || "").toLowerCase() === "kids";
   const out = [];
   if (chemicals.includes("pfas")) out.push({
+    // C-09 fix: Zheng 2025 (3,252×) is for children's textiles only (methodology §E.4).
+    // For adult garments, use the general evidence-based phrasing.
     text: isWorkout
-      ? "Sweat amplifies PFAS dermal absorption up to 3,252× vs dry contact — the highest-risk scenario for this fabric."
+      ? (isKids
+          ? "Sweat amplifies PFAS dermal absorption up to 3,252× vs dry contact in children's textiles (Zheng et al. 2025) — highest-risk scenario."
+          : "Sweat significantly increases PFAS dermal transfer — the highest-risk scenario for this fabric type.")
       : isActive ? "Moisture increases PFAS skin absorption several-fold above dry baseline."
       : activity === "sleep" ? "Prolonged skin contact (~8 hrs) compounds PFAS transfer even at low sweat levels."
       : "PFAS transfers through skin at baseline rate during dry wear.",
-    source: "Zheng et al. 2025 · Sci Total Environ",
-    href: "https://doi.org/10.1016/j.scitotenv.2025.181066",
+    source: isKids && isWorkout ? "Zheng et al. 2025 · Sci Total Environ" : "Whitehead et al. 2021 · Env Sci Technol Lett",
+    href: isKids && isWorkout ? "https://doi.org/10.1016/j.scitotenv.2025.181066" : "https://doi.org/10.1021/acs.est.2c02111",
   });
   if (chemicals.includes("microplastics")) {
     const n = isWorkout ? "~3,800" : isActive ? "~2,400" : "~1,900";
@@ -150,12 +155,15 @@ export default function ResultsPage({
   const conf = CONFIDENCE[tier];
   const sc = scoreColor(ov);
 
-  const chemicals = getGarmentChemicals({ ...R, score: ov });
+  // Option A: pass V3 trace so getGarmentChemicals reads engine output directly.
+  // Falls back to V2 trigger logic if no trace (old scans / V3 returned null).
+  const v3trace = S?._v3?.trace || null;
+  const chemicals = getGarmentChemicals({ ...R, score: ov }, v3trace);
   const riskIdx = computeRisk(ov, activity, frequency, skin);
   const rb = riskBand(riskIdx);
   const organicIdx = computeRisk(92, activity, frequency, skin);
   const vsOrganic = Math.max(1, Math.round(riskIdx / Math.max(organicIdx, 1)));
-  const bullets = exposureBullets(chemicals, activity);
+  const bullets = exposureBullets(chemicals, activity, R.category);
 
   const recs = getRecommendations({ ...R, score: ov });
   const alts = recs.slice(0, 3);
@@ -589,7 +597,7 @@ export default function ResultsPage({
         {/* Disclaimer */}
         <div style={{ textAlign: "center", padding: "20px 0 40px" }}>
           <div style={{ fontSize: 11, color: "#71717a", lineHeight: 1.7, maxWidth: 480, margin: "0 auto" }}>
-            Scores are based on published regulatory data, NGO research, and peer-reviewed studies. Chemical presence is inferred from material composition — actual levels vary by manufacturer.
+            CleanWear scores are category-level risk estimates based on material composition and brand public records. They are not product-specific laboratory test results. Chemical presence is inferred from declared materials — actual levels vary by manufacturer.
           </div>
           <div style={{ fontSize: 10, color: "#52525b", marginTop: 10, letterSpacing: 0.4 }}>
             Independent methodology · no brand payments · © 2026 CleanWear

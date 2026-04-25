@@ -106,10 +106,10 @@ function ScanDemo() {
               transition: "transform 0.3s ease",
             }}>
               {/* Tag content lines */}
-              <div style={{ fontSize: 9, fontWeight: 700, color: "#333", marginBottom: 6, letterSpacing: 0.5 }}>NIKE</div>
-              <div style={{ fontSize: 7, color: "#666", marginBottom: 3 }}>100% Polyester</div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: "#333", marginBottom: 6, letterSpacing: 0.5 }}>THE NORTH FACE</div>
+              <div style={{ fontSize: 7, color: "#666", marginBottom: 3 }}>85% Nylon, 15% Polyester</div>
               <div style={{ fontSize: 7, color: "#666", marginBottom: 3 }}>Made in Vietnam</div>
-              <div style={{ fontSize: 7, color: "#999", marginBottom: 6 }}>Machine wash cold</div>
+              <div style={{ fontSize: 7, color: "#999", marginBottom: 6 }}>Waterproof / DWR treated</div>
               <div style={{ display: "flex", gap: 3, marginTop: 4 }}>
                 {[28, 28, 28, 16, 16].map((w, i) => (
                   <div key={i} style={{ width: w, height: 3, background: "#ccc", borderRadius: 1 }} />
@@ -178,20 +178,20 @@ function ScanDemo() {
             background: "#fff",
           }}>
             {/* Score circle */}
-            <ScoreCircle score={28} size={80} />
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#ef4444", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 12, marginBottom: 4 }}>
-              Bad · 28/100
+            <ScoreCircle score={43} size={80} />
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#f97316", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 12, marginBottom: 4 }}>
+              Elevated Risk · 43/100
             </div>
             <div style={{ fontSize: 18, fontWeight: 800, color: "#1a1a1a", marginBottom: 2 }}>
-              Dri-FIT Training Tee
+              Gore-Tex Shell Jacket
             </div>
             <div style={{ fontSize: 13, color: "#999", marginBottom: 16 }}>
-              Nike · Athletic Shirt
+              The North Face · Outerwear
             </div>
 
             {/* Chemical tags */}
             <div style={{ display: "flex", gap: 5, flexWrap: "wrap", justifyContent: "center", marginBottom: 16 }}>
-              {["Formaldehyde", "Antimony", "BPA"].map((c) => (
+              {["PFAS", "Antimony", "Microplastics"].map((c) => (
                 <span key={c} style={{
                   padding: "3px 9px", background: "#fef2f2", borderRadius: 5,
                   fontSize: 11, color: "#b91c1c", fontWeight: 600,
@@ -202,7 +202,7 @@ function ScanDemo() {
             </div>
 
             <div style={{ fontSize: 12, color: "#888", lineHeight: 1.5, textAlign: "center" }}>
-              3 chemicals linked to cancer and hormone disruption that absorb through your skin.
+              PFAS detected via declared DWR treatment. EU OEKO-TEX limit: 25 ppb per compound.
             </div>
           </div>
 
@@ -237,23 +237,18 @@ function ScanDemo() {
 
       {/* "Live demo" label under phone */}
       <div style={{ textAlign: "center", marginTop: 16, fontSize: 13, color: "#999" }}>
-        Scanning a Nike tag — live demo
+        Scanning a North Face tag — live demo
       </div>
     </div>
   );
 }
 
 // ─── RESEARCH SPOTLIGHT CAROUSEL ─────────────────────────────
-const SPOTLIGHTS = [
-  { icon: "🧬", fact: "A single polyester gym shirt releases up to 1,900 microplastic fibers per wash — fibers that end up in your bloodstream.", source: "Environmental Science & Technology, 2023" },
-  { icon: "🌡️", fact: "BPA in synthetic clothing leaches 15× faster during exercise when skin temperature exceeds 37°C.", source: "Journal of Dermatological Science" },
-  { icon: "💪", fact: "Men exposed to high BPA levels showed testosterone levels 30% lower than those with minimal exposure.", source: "Reproductive Toxicology, 2022" },
-  { icon: "👕", fact: "The average person absorbs up to 120 different chemicals through their clothing every single day.", source: "Stockholm University Research" },
-  { icon: "🏃", fact: "Athletic wear is the highest-risk clothing category — sweat, heat, and friction all accelerate chemical leaching into your body.", source: "Textile Research Journal" },
-  { icon: "🧪", fact: "Formaldehyde — the chemical used to preserve lab specimens — is used in 60% of cotton clothing for wrinkle resistance.", source: "Government Accountability Office" },
-  { icon: "🌍", fact: "PFAS 'forever chemicals' in waterproof activewear take over 1,000 years to break down. They never leave your body.", source: "Environmental Health Perspectives" },
-  { icon: "🔬", fact: "Microplastics from synthetic clothing were found in 80% of human blood samples tested in a landmark 2022 study.", source: "Environment International, 2022" },
-];
+// CITATIONS AUDIT (2026-04-24): All prior SPOTLIGHTS items were flagged NEEDS AUDIT
+// in CITATIONS.md — no DOI, no author, unverifiable shortened attributions.
+// Removed per emergency-fixes plan. Rebuild with verified DOI-linked citations only.
+// See: audit/cleanwear_system_audit.md and CITATIONS.md §"fun-facts content"
+const SPOTLIGHTS = [];
 
 function ResearchSpotlight({ F, S }) {
   const [idx, setIdx] = useState(0);
@@ -476,9 +471,9 @@ export default function LandingPage({ onLaunchApp }) {
               display: "flex", gap: 32, flexWrap: "wrap",
             }}>
               {[
-                { n: "1,000+", l: "chemicals\ntracked" },
+                { n: "12", l: "chemical\ncategories tracked" },
                 { n: "1,200+", l: "products\nin database" },
-                { n: "100%", l: "cited\nsources" },
+                { n: "100%", l: "scores cite\na source" },
               ].map((s, i) => (
                 <div key={i}>
                   <div style={{ fontFamily: S, fontSize: 26, fontWeight: 800, color: "#166534", lineHeight: 1 }}>{s.n}</div>
@@ -638,10 +633,10 @@ export default function LandingPage({ onLaunchApp }) {
               {[
                 {
                   num: "01",
-                  weight: "25%",
-                  title: "Regulatory flags",
-                  source: "EU REACH Annex XVII",
-                  desc: "We map each garment's category and materials against restricted chemical classes under EU REACH — phthalates, azo dyes, lead, antimony, formaldehyde. These are the chemicals Europe has already banned or limited.",
+                  weight: "45%",
+                  title: "Material chemical risk",
+                  source: "EU REACH Annex XVII · 12 inference rules",
+                  desc: "We apply 12 inference rules to declared materials and finish treatments — mapping fiber types and chemical finish claims to regulated chemical categories.",
                 },
                 {
                   num: "02",
@@ -652,10 +647,10 @@ export default function LandingPage({ onLaunchApp }) {
                 },
                 {
                   num: "03",
-                  weight: "40%",
+                  weight: "20%",
                   title: "Category research benchmarks",
                   source: "Mamavation · EWG · Zheng et al. 2025",
-                  desc: "Published testing data for specific garment types. Activewear tested at 68% positive for PFAS. Children's textiles show sweat-amplified dermal transfer up to 3,252× dry contact. These studies drive the category baselines.",
+                  desc: "Published testing data for specific garment types. Activewear tested at 68% positive for PFAS. Children's textiles show elevated chemical transfer risk in published studies.",
                 },
               ].map((step, i) => (
                 <div key={i} style={{
@@ -718,8 +713,8 @@ export default function LandingPage({ onLaunchApp }) {
             {[
               { num: "1,000+", label: "chemicals the EU restricts", color: "#16a34a" },
               { num: "~0", label: "restricted in the US for adults", color: "#ef4444" },
-              { num: "22×", label: "above safe BPA limits in sportswear", color: "#eab308" },
-              { num: "5×", label: "faster absorption when sweating", color: "#16a34a" },
+              { num: "73%", label: "of DWR outerwear tested PFAS-positive", color: "#eab308" },
+              { num: "68%", label: "of tested activewear found PFAS-positive", color: "#16a34a" },
             ].map((s, i) => (
               <div key={i} style={{ background: "#fff", borderRadius: 16, padding: "20px 16px", textAlign: "center", border: "1px solid #e8e8e4" }}>
                 <div style={{ fontFamily: S, fontSize: 32, fontWeight: 800, color: s.color, lineHeight: 1, marginBottom: 6 }}>{s.num}</div>
@@ -731,7 +726,10 @@ export default function LandingPage({ onLaunchApp }) {
       </section>
 
       {/* ═══ RESEARCH SPOTLIGHT — auto-rotating carousel ═══ */}
-      <ResearchSpotlight F={F} S={S} />
+      {/* TODO: ResearchSpotlight carousel disabled 2026-04-24 — all items removed by
+      citations audit (NEEDS AUDIT / no DOI). Rebuild when verified DOI-linked
+      citations are available. See CITATIONS.md and emergency_fixes_plan.md */}
+{/* <ResearchSpotlight F={F} S={S} /> */}
 
       {/* ═══ GET RECOMMENDATIONS — Yuka-style bad→good comparison ═══ */}
       <section style={{ padding: "72px 24px", background: "#fff" }}>
@@ -747,11 +745,11 @@ export default function LandingPage({ onLaunchApp }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 520, margin: "0 auto" }}>
             {[
               {
-                bad: { name: "Dri-FIT Training Tee", brand: "Nike", score: 28, materials: "100% Polyester" },
+                bad: { name: "Gore-Tex Shell Jacket", brand: "The North Face", score: 43, materials: "85% Nylon, 15% Polyester" },
                 good: { name: "Organic Cotton Tee", brand: "Patagonia", score: 88, materials: "100% Organic Cotton" },
               },
               {
-                bad: { name: "Align Leggings", brand: "Lululemon", score: 29, materials: "81% Nylon, 19% Lycra" },
+                bad: { name: "HEATTECH Ultra Warm", brand: "Uniqlo", score: 60, materials: "Polyester / Acrylic / Rayon / Spandex" },
                 good: { name: "Organic Leggings", brand: "Pact", score: 87, materials: "95% Organic Cotton, 5% Spandex" },
               },
             ].map((pair, i) => (

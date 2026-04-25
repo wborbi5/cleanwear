@@ -42,7 +42,7 @@ const STEPS = [
 
 const MATERIAL_PROFILES = {
   polyester: { name: "Polyester", safety: 32, chems: ["Antimony trioxide", "Microplastics", "BPA/BPS"], risk: "high" },
-  nylon: { name: "Nylon", safety: 38, chems: ["Microplastics", "Formaldehyde resins"], risk: "high" },
+  nylon: { name: "Nylon", safety: 38, chems: ["Microplastics"], risk: "moderate-high" },
   cotton: { name: "Cotton", safety: 72, chems: ["Formaldehyde (wrinkle treatment)"], risk: "low" },
   cotton_poly: { name: "Cotton-Poly Blend", safety: 52, chems: ["Antimony", "Microplastics", "Formaldehyde"], risk: "moderate" },
   linen: { name: "Linen", safety: 90, chems: ["Minimal — very low risk"], risk: "minimal" },

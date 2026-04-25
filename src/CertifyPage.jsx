@@ -6,9 +6,9 @@ const supabase = (import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPA
   : null;
 
 const TIERS = [
-  { id: "gold", label: "Gold", desc: "Full chemical panel — PFAS, formaldehyde, phthalates, heavy metals, azo dyes, pH" },
-  { id: "silver", label: "Silver", desc: "Core panel — PFAS + formaldehyde + phthalates" },
-  { id: "bronze", label: "Bronze", desc: "Single-chemical screen (e.g. PFAS only)" },
+  { id: "gold", label: "Gold", desc: "Full CleanWear V3 methodology review + planned comprehensive chemical panel (PFAS, formaldehyde, phthalates, heavy metals, azo dyes)" },
+  { id: "silver", label: "Silver", desc: "CleanWear V3 methodology review + planned core panel (PFAS, formaldehyde, phthalates)" },
+  { id: "bronze", label: "Bronze", desc: "CleanWear V3 methodology review + planned single-chemical screen (e.g. PFAS only)" },
 ];
 
 const EXISTING_CERTS = ["OEKO-TEX Standard 100", "GOTS", "bluesign", "Fair Trade", "Cradle to Cradle", "None"];
@@ -89,7 +89,7 @@ export default function CertifyPage({ onBack }) {
             <h2 style={styles.successTitle}>Application Received</h2>
             <p style={styles.successText}>
               We'll review your application and reach out to <strong>{form.contact_email}</strong> within 5 business days
-              with next steps, including sample shipping instructions.
+              with next steps.
             </p>
             <div style={styles.successRef}>
               Reference: {form.brand_name.toUpperCase().replace(/\s+/g, "-")}-{Date.now().toString(36).toUpperCase()}
@@ -114,9 +114,9 @@ export default function CertifyPage({ onBack }) {
 
         <div style={styles.valueProps}>
           {[
-            { icon: "🧪", title: "Independent Lab Testing", desc: "ISO 17025-accredited labs test your products against OEKO-TEX 2026 thresholds." },
-            { icon: "🛡️", title: "Consumer Trust Badge", desc: "Certified products display a CleanWear trust badge with linked lab report." },
-            { icon: "📊", title: "Scored in Our Database", desc: "Certified brands receive Tier 1 confidence scores — the highest rating available." },
+            { icon: "🧪", title: "Transparent Methodology Review", desc: "Your materials and certifications are evaluated against the CleanWear V3 methodology. Lab testing partnerships are in development." },
+            { icon: "🛡️", title: "Consumer Trust Badge", desc: "Certified products will display a CleanWear trust badge with a linked methodology review. Lab-verified badges will follow when the testing program launches." },
+            { icon: "📊", title: "Scored in Our Database", desc: "Certified brands will receive Tier 1 confidence scores — the highest confidence tier in our scoring system." },
           ].map((v, i) => (
             <div key={i} style={styles.valueProp}>
               <div style={{ fontSize: 24 }}>{v.icon}</div>
@@ -190,14 +190,14 @@ export default function CertifyPage({ onBack }) {
           <label style={styles.label}>
             <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <input type="checkbox" checked={form.can_ship_samples} onChange={e => set("can_ship_samples", e.target.checked)} />
-              We can ship product samples to a US-based lab
+              We can ship product samples when a lab partnership is confirmed
             </span>
           </label>
 
           <label style={styles.label}>Target Timeline
             <select style={styles.input} value={form.timeline} onChange={e => set("timeline", e.target.value)}>
               <option value="">Select...</option>
-              <option value="asap">ASAP (2-4 weeks)</option>
+              <option value="asap">As soon as the program launches</option>
               <option value="quarter">This quarter</option>
               <option value="planning">Just planning ahead</option>
             </select>
@@ -209,7 +209,7 @@ export default function CertifyPage({ onBack }) {
 
           <label style={{ ...styles.label, flexDirection: "row", alignItems: "center", gap: 8, marginTop: 16 }}>
             <input type="checkbox" checked={form.agreed_to_terms} onChange={e => set("agreed_to_terms", e.target.checked)} />
-            <span style={{ fontSize: 13 }}>I agree that submitted products will be independently tested and results published on CleanWear regardless of pass/fail outcome.</span>
+            <span style={{ fontSize: 13 }}>I understand that this is an interest registration for the CleanWear certification program, which is currently in development. I will be contacted with details before any testing or fees are confirmed.</span>
           </label>
 
           {error && <div style={styles.error}>{error}</div>}

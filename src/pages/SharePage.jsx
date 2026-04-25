@@ -74,7 +74,7 @@ function parseChemicals(str) {
 function alarmingSentence(band, topChemical) {
   if (band === "high") {
     return topChemical
-      ? `Tested positive for ${topChemical} — the kind of chemical the EU is phasing out.`
+      ? `Flagged for ${topChemical} — the kind of chemical the EU is phasing out.`
       : "Scored in the highest-risk band for chemical exposure.";
   }
   if (band === "mod") return "Moderate-risk chemicals detected. Safer options exist at the same price.";
@@ -87,12 +87,12 @@ export default function SharePage() {
   const url = new URL(window.location.href);
   const q = url.searchParams;
 
-  const brand = q.get("b") || "Nike";
-  const name = q.get("n") || "Dri-FIT Training Tee";
-  const score = parseInt(q.get("s") || "28", 10);
-  const garment = q.get("g") || "athletic tee";
+  const brand = q.get("b") || "The North Face";
+  const name = q.get("n") || "Gore-Tex Shell Jacket";
+  const score = parseInt(q.get("s") || "43", 10);
+  const garment = q.get("g") || "outerwear jacket";
   const fromName = q.get("from") || null;
-  const chemicals = parseChemicals(q.get("ch") || "PFAS:high,Formaldehyde:mod,BPA:mod");
+  const chemicals = parseChemicals(q.get("ch") || "PFAS:high,Antimony:mod,Microplastics:mod");
   const topChemicalName = chemicals[0]?.name || null;
 
   const band = score >= 70 ? "low" : score >= 40 ? "mod" : "high";
@@ -112,8 +112,8 @@ export default function SharePage() {
 
   // Mock trending rows (pending /feed data flywheel per §5.7).
   const trending = [
-    { rank: 1, thumbnail: "👕", brand: "Lululemon", name: "Align Leggings", scans: 2104, score: 29, chips: [{ label: "PFAS", tone: "bad" }] },
-    { rank: 2, thumbnail: "👕", brand: "Nike", name: "Dri-FIT Training Tee", scans: 1247, score: 28, chips: [{ label: "Formaldehyde", tone: "bad" }] },
+    { rank: 1, thumbnail: "🧥", brand: "The North Face", name: "Gore-Tex Shell Jacket", scans: 2104, score: 43, chips: [{ label: "PFAS", tone: "bad" }] },
+    { rank: 2, thumbnail: "👕", brand: "Uniqlo", name: "HEATTECH Ultra Warm", scans: 1247, score: 60, chips: [{ label: "Antimony", tone: "bad" }, { label: "Phthalates", tone: "bad" }] },
     { rank: 3, thumbnail: "👕", brand: "Patagonia", name: "Organic Cotton Tee", scans: 612, score: 88, chips: ["bluesign", "GOTS"] },
   ];
 

@@ -15,6 +15,7 @@ import PWAInstallBanner from "./components/PWAInstallBanner.jsx";
 import ShareCard from "./components/ShareCard.jsx";
 import ScanLimitModal from "./components/ScanLimitModal.jsx";
 import { canScan, incrementScanCount, addScanCredit, getScanStatus } from "./utils/scanCredits.js";
+import { scoreV3 } from "./scoringEngineV3.js";  // V3 shadow scoring — §I.3 parallel period
 
 // ============================================================
 // CLEANWEAR — Clothing Safety Intelligence
@@ -72,19 +73,14 @@ const COUNTRY_SCORES = {
   "cambodia": 44, "myanmar": 38, "pakistan": 45, "thailand": 55, "mexico": 58,
 };
 
-const FUN_FACTS = [
-  { icon: "\ud83e\uddec", fact: "A single polyester gym shirt releases up to 1,900 microplastic fibers per wash \u2014 fibers that end up in your bloodstream.", source: "Environmental Science & Technology, 2023" },
-  { icon: "\ud83c\udf21\ufe0f", fact: "BPA in synthetic clothing leaches 15x faster during exercise when skin temperature exceeds 37\u00b0C.", source: "Journal of Dermatological Science" },
-  { icon: "\ud83d\udcaa", fact: "Men exposed to high BPA levels showed testosterone levels 30% lower than those with minimal exposure.", source: "Reproductive Toxicology, 2022" },
-  { icon: "\ud83d\udc55", fact: "The average person absorbs up to 120 different chemicals through their clothing every single day.", source: "Stockholm University Research" },
-  { icon: "\ud83c\udfc3", fact: "Athletic wear is the highest-risk clothing category \u2014 sweat, heat, and friction all accelerate chemical leaching into your body.", source: "Textile Research Journal" },
-  { icon: "\ud83e\uddea", fact: "Formaldehyde \u2014 the chemical used to preserve lab specimens \u2014 is used in 60% of cotton clothing for wrinkle resistance.", source: "Government Accountability Office" },
-  { icon: "\ud83c\udf0d", fact: "PFAS 'forever chemicals' in waterproof activewear take over 1,000 years to break down. They never leave your body.", source: "Environmental Health Perspectives" },
-  { icon: "\ud83d\udd2c", fact: "Microplastics from synthetic clothing were found in 80% of human blood samples tested in a landmark 2022 study.", source: "Environment International, 2022" },
-  { icon: "\ud83c\udfcb\ufe0f", fact: "Nylon-spandex compression wear creates the highest chemical absorption rate of any clothing type through sustained skin contact.", source: "Journal of Exposure Science" },
-  { icon: "\ud83e\uddf4", fact: "Anti-odor treatments on athletic wear contain nanosilver particles that accumulate in your liver and kidneys over time.", source: "Nanotoxicology Research" },
-];
+// CITATIONS AUDIT (2026-04-24): All prior FUN_FACTS items were flagged NEEDS AUDIT
+// in CITATIONS.md (no DOI, no author, unverifiable attributions). Items 9-10 were
+// not in CITATIONS.md at all. Removed per emergency-fixes plan.
+// See: audit/cleanwear_system_audit.md and CITATIONS.md §"fun-facts content"
+const FUN_FACTS = [];
 
+// ⚠️ DEPRECATED — V1 scoring. Do not extend. Remove at V3 cutover.
+// V2 result (score.v2) drives displayed score; V3 runs shadow in doScan().
 function calculateScore(pd) {
   // Legacy scoring (material DB + chemical penalties) for backward compat
   let ms = 0, tw = 0; const mb = [];
@@ -232,7 +228,7 @@ export default function CleanWearApp() {
     }
   }, [user, authLoading]);
   useEffect(() => { if (!user && wardrobe.length > 0) { localStorage.setItem("cw_wardrobe", JSON.stringify(wardrobe)); } if (wardrobe.length > 0) analytics.syncWardrobeProfile(wardrobe); }, [wardrobe, user]);
-  useEffect(() => { const i = setInterval(() => setFactIdx(x => (x + 1) % FUN_FACTS.length), 7000); return () => clearInterval(i); }, []);
+  useEffect(() => { if (!FUN_FACTS.length) return; const i = setInterval(() => setFactIdx(x => (x + 1) % FUN_FACTS.length), 7000); return () => clearInterval(i); }, []);
 
   // Auto-scan from landing page demo
   useEffect(() => {
@@ -292,7 +288,21 @@ export default function CleanWearApp() {
       incrementScanCount();
       setHasViewedResult(true);
       analytics.trackScanCompleted(q, sc2.overall, pd.brand, pd.product_name, pd.category);
-      logScan({ query: q, score: sc2.overall, brand: pd.brand, product: pd.product_name, category: pd.category });
+      // V3 shadow scoring — runs in parallel, result logged only, V2 displayed (§I.3)
+      let _v3score = null, _v3trace = null, _v3tier = null;
+      try {
+        const _v3brand = BRAND_BY_NAME[(pd.brand || "").toLowerCase().trim()] || null;
+        const _v3result = scoreV3(pd, _v3brand);
+        if (_v3result) {
+          _v3score = _v3result.score;
+          _v3trace = _v3result.trace;
+          _v3tier  = _v3result.confidence_tier;
+        }
+      } catch (_v3err) {
+        console.warn("[V3 shadow] scoring failed:", _v3err?.message);
+      }
+      logScan({ query: q, score: sc2.overall, brand: pd.brand, product: pd.product_name, category: pd.category,
+                score_v3: _v3score, trace_v3: _v3trace, confidence_tier_v3: _v3tier });
     } catch (err) { clearInterval(iv); setError("Could not analyze this product. Try a more specific search."); analytics.trackScanFailed(q, err?.message || "unknown"); }
     finally { setLoading(false); setLoadStep(""); scanSourceRef.current = "search"; }
   }, [scanMode, navigateToResults, user]);
@@ -355,7 +365,7 @@ export default function CleanWearApp() {
       <div className="howto-label">How It Works</div>
       <div className="howto-steps">
         <div className="howto-step"><div className="howto-num">1</div><div className="howto-body"><div className="howto-title">Search or scan</div><div className="howto-desc">Type a brand + product, or point your camera at the care tag or barcode.</div></div></div>
-        <div className="howto-step"><div className="howto-num">2</div><div className="howto-body"><div className="howto-title">We pull public data</div><div className="howto-desc">Materials, certifications, and lab test results from published research and regulatory databases online.</div></div></div>
+        <div className="howto-step"><div className="howto-num">2</div><div className="howto-body"><div className="howto-title">We pull public data</div><div className="howto-desc">Materials, certifications, and published research from regulatory bodies and peer-reviewed studies — no lab testing required.</div></div></div>
         <div className="howto-step"><div className="howto-num">3</div><div className="howto-body"><div className="howto-title">Get a safety score</div><div className="howto-desc">0–100 score based on PFAS, BPA, phthalates, formaldehyde, and other textile chemicals of concern.</div></div></div>
       </div>
     </div>
@@ -440,7 +450,8 @@ export default function CleanWearApp() {
 
   const renderBrands = () => (<BrandExplore onScanProduct={(productQuery) => { setQuery(productQuery); scanSourceRef.current = "brand_browse"; doScan(productQuery); }} onScanProductDirect={(product) => { scanSourceRef.current = "brand_browse"; doScanDirect(product); }} />);
 
-  const renderLearn = () => (<div className="lrn"><h2 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 700, marginBottom: 24 }}>Learn</h2><div className="lrn-c" style={{ borderLeft: "2px solid var(--g5)" }}><h3>Weekly Digest</h3>{wardrobe.length > 0 ? (<><div className="ds"><div className="ds-n" style={{ color: sc(avg) }}>{avg}</div><div className="ds-l">Average wardrobe safety score</div></div><div className="ds"><div className="ds-n">{wardrobe.length}</div><div className="ds-l">Items scanned</div></div><div className="ds"><div className="ds-n" style={{ color: "var(--r4)" }}>{wardrobe.filter(w => w.score < 40).length}</div><div className="ds-l">High-risk items</div></div><div className="ds"><div className="ds-n" style={{ color: "var(--g6)" }}>{wardrobe.filter(w => w.score >= 70).length}</div><div className="ds-l">Safe items</div></div><p style={{ fontSize: 13, color: "var(--tx4)", marginTop: 14, lineHeight: 1.6 }}>Replace your highest-contact, lowest-score items first — underwear and gym shirts create the most chemical exposure.</p></>) : <p>Scan items to get your personalized weekly digest.</p>}</div><div className="lrn-c"><h3>Chemical Reference</h3><p style={{ marginBottom: 4 }}>Tap to expand.</p>{Object.entries(CHEMICAL_RISKS).map(([k, c]) => (<div key={k} style={{ padding: "14px 0", borderBottom: "1px solid var(--bd)", cursor: "pointer" }} onClick={() => { const next = expanded === k ? null : k; setExpanded(next); if (next) analytics.trackChemicalReferenceExpanded(c.name); }}><div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 16 }}>{c.icon}</span><span style={{ fontWeight: 600, fontSize: 13 }}>{c.name}</span>{c.cancerLinked && <span style={{ fontSize: 9, color: "var(--r4)", fontWeight: 800, background: "rgba(248,113,113,.1)", padding: "2px 8px", borderRadius: 4, letterSpacing: ".5px" }}>CARCINOGEN</span>}</div>{expanded === k && <div style={{ marginTop: 10, fontSize: 13, color: "var(--tx3)", lineHeight: 1.6 }}>{c.desc}<div style={{ marginTop: 6, fontSize: 12, color: "var(--tx4)", fontStyle: "italic" }}>{"\u23f1"} {c.timeline}</div></div>}</div>))}</div><div className="lrn-c"><h3>Material Rankings</h3><p style={{ marginBottom: 14 }}>Safest to most concerning:</p>{Object.entries(MATERIAL_DB).sort((a, b) => b[1].score - a[1].score).slice(0, 10).map(([n, d], i) => (<div key={n} style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 0", borderBottom: "1px solid var(--bd)" }}><div style={{ fontFamily: "var(--serif)", fontWeight: 800, fontSize: 16, color: "var(--tx4)", minWidth: 24 }}>{i + 1}</div><div style={{ flex: 1, textTransform: "capitalize", fontSize: 13, fontWeight: 600 }}>{n}</div><div style={{ fontFamily: "var(--serif)", fontWeight: 700, color: sc(d.score) }}>{d.score}</div></div>))}</div><div className="lrn-c"><h3>Research Library</h3>{FUN_FACTS.map((f, i) => (<div key={i} style={{ padding: "14px 0", borderBottom: i < FUN_FACTS.length - 1 ? "1px solid var(--bd)" : "none" }}><div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}><span style={{ fontSize: 20, minWidth: 28 }}>{f.icon}</span><div><div style={{ fontSize: 14, lineHeight: 1.6 }}>{f.fact}</div><div style={{ fontSize: 11, color: "var(--tx4)", marginTop: 6, fontStyle: "italic" }}>{f.source}</div></div></div></div>))}</div></div>);
+  const renderLearn = () => (<div className="lrn"><h2 style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 700, marginBottom: 24 }}>Learn</h2><div className="lrn-c" style={{ borderLeft: "2px solid var(--g5)" }}><h3>Weekly Digest</h3>{wardrobe.length > 0 ? (<><div className="ds"><div className="ds-n" style={{ color: sc(avg) }}>{avg}</div><div className="ds-l">Average wardrobe safety score</div></div><div className="ds"><div className="ds-n">{wardrobe.length}</div><div className="ds-l">Items scanned</div></div><div className="ds"><div className="ds-n" style={{ color: "var(--r4)" }}>{wardrobe.filter(w => w.score < 40).length}</div><div className="ds-l">High-risk items</div></div><div className="ds"><div className="ds-n" style={{ color: "var(--g6)" }}>{wardrobe.filter(w => w.score >= 70).length}</div><div className="ds-l">Safe items</div></div><p style={{ fontSize: 13, color: "var(--tx4)", marginTop: 14, lineHeight: 1.6 }}>Replace your highest-contact, lowest-score items first — underwear and gym shirts create the most chemical exposure.</p></>) : <p>Scan items to get your personalized weekly digest.</p>}</div><div className="lrn-c"><h3>Chemical Reference</h3><p style={{ marginBottom: 4 }}>Tap to expand.</p>{Object.entries(CHEMICAL_RISKS).map(([k, c]) => (<div key={k} style={{ padding: "14px 0", borderBottom: "1px solid var(--bd)", cursor: "pointer" }} onClick={() => { const next = expanded === k ? null : k; setExpanded(next); if (next) analytics.trackChemicalReferenceExpanded(c.name); }}><div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ fontSize: 16 }}>{c.icon}</span><span style={{ fontWeight: 600, fontSize: 13 }}>{c.name}</span>{c.cancerLinked && <span style={{ fontSize: 9, color: "var(--r4)", fontWeight: 800, background: "rgba(248,113,113,.1)", padding: "2px 8px", borderRadius: 4, letterSpacing: ".5px" }}>CARCINOGEN</span>}</div>{expanded === k && <div style={{ marginTop: 10, fontSize: 13, color: "var(--tx3)", lineHeight: 1.6 }}>{c.desc}<div style={{ marginTop: 6, fontSize: 12, color: "var(--tx4)", fontStyle: "italic" }}>{"\u23f1"} {c.timeline}</div></div>}</div>))}</div><div className="lrn-c"><h3>Material Rankings</h3><p style={{ marginBottom: 14 }}>Safest to most concerning:</p>{Object.entries(MATERIAL_DB).sort((a, b) => b[1].score - a[1].score).slice(0, 10).map(([n, d], i) => (<div key={n} style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 0", borderBottom: "1px solid var(--bd)" }}><div style={{ fontFamily: "var(--serif)", fontWeight: 800, fontSize: 16, color: "var(--tx4)", minWidth: 24 }}>{i + 1}</div><div style={{ flex: 1, textTransform: "capitalize", fontSize: 13, fontWeight: 600 }}>{n}</div><div style={{ fontFamily: "var(--serif)", fontWeight: 700, color: sc(d.score) }}>{d.score}</div></div>))}</div>{/* TODO: Research Library hidden 2026-04-24 — FUN_FACTS emptied by citations audit.
+    Rebuild with DOI-verified citations. See emergency_fixes_plan.md */}</div>);
 
   return (<><style>{CSS}</style>{view === "results" ? (<div className="app" style={{ padding: 0 }}>{loading ? <div className="ld-c"><div className="ld-spin" /><div><div className="ld-t">Analyzing product safety</div><div className="ld-sub">{loadStep}</div></div></div> : renderResults()}</div>) : (<div className="app"><div className="hdr"><div className="hdr-logo" role="button" tabIndex={0} onClick={() => { window.location.hash = ""; }} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { window.location.hash = ""; } }} style={{ cursor: "pointer" }}>Clean<em>Wear</em></div><div className="hdr-badge">{wardrobe.length > 0 && <><span style={{ color: sc(avg), marginRight: 4 }}>{"\u25cf"}</span>{avg} avg {"\u00b7"} </>}{wardrobe.length} items</div></div><div className="cnt">{loading ? <div className="ld-c"><div className="ld-spin" /><div><div className="ld-t">Analyzing product safety</div><div className="ld-sub">{loadStep}</div></div></div> : (<>{error && <div className="err-b"><p>{error}</p><button className="err-btn" onClick={() => { setError(null); setView("scanner"); }}>Try Again</button></div>}{view === "scanner" && renderScanner()}{view === "wardrobe" && renderWardrobe()}{view === "brands" && renderBrands()}{view === "learn" && renderLearn()}{view === "certify" && <CertifyPage onBack={() => navigateTo("scanner")} />}</>)}</div><div className="nav"><div className="nav-inner">{[{ id: "scanner", ic: "\u25ce", l: "SCAN" }, { id: "brands", ic: "\u25c8", l: "BRANDS" }, { id: "learn", ic: "\u25c9", l: "LEARN" }].map(n => (<button key={n.id} className={`nav-i ${view === n.id ? "on" : ""}`} onClick={() => { const prevView = view; navigateTo(n.id); analytics.trackTabSwitch(n.id, prevView); }}><span className="nav-ic">{n.ic}</span>{n.l}</button>))}</div></div></div>)}<AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} trigger={authTrigger} />
     <ShareCard

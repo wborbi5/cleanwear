@@ -28,7 +28,8 @@ export const supabase = supabaseUrl && supabaseKey
   : null
 
 // Log every scan — includes PostHog distinct_id + user_id if authenticated
-export async function logScan({ query, score, brand, product, category }) {
+export async function logScan({ query, score, brand, product, category,
+                                score_v3 = null, trace_v3 = null, confidence_tier_v3 = null }) {
   if (!supabase) return
   try {
     const ph = window.posthog
@@ -42,6 +43,10 @@ export async function logScan({ query, score, brand, product, category }) {
       posthog_distinct_id: ph?.get_distinct_id() || null,
       user_id: session?.user?.id || null,
       scanned_at: new Date().toISOString(),
+      // V3 shadow fields — nullable; null if V3 engine returned no result (§I.3)
+      score_v3:           score_v3 ?? null,
+      trace_v3:           trace_v3 ?? null,
+      confidence_tier_v3: confidence_tier_v3 ?? null,
     })
   } catch (e) {
     console.warn('Scan log failed:', e)

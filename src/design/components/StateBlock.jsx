@@ -92,12 +92,12 @@ export function EmptyFeed({ onScan }) {
 
 // ───────────────────────────────────────────────────────────
 // ScanProgress — animated loading state for scan in flight.
-// Per §5.4. "Cross-referencing 14 databases…" cadence.
+// Per §5.4.
 // ───────────────────────────────────────────────────────────
 export function ScanProgress({ step }) {
   const defaultSteps = [
     "Reading fabric composition…",
-    "Cross-referencing 14 databases…",
+    "Checking brand safety records…",
     "Flagging restricted chemicals…",
     "Building safety score…",
   ];

@@ -202,11 +202,14 @@ function UnknownProductView({ query, onBack, onSearchNew }) {
         </button>
       </div>
 
-      {/* Hero */}
+      {/* Hero — lead with the confirmation */}
       <div style={{ padding: "36px 24px 28px", textAlign: "center" }}>
-        <div style={{ fontSize: 64, marginBottom: 16 }}>🔍</div>
-        <div style={{ fontFamily: "var(--serif)", fontSize: 24, fontWeight: 700, color: "var(--tx)", marginBottom: 8, letterSpacing: "-0.5px" }}>
-          We don't have data on this yet
+        <div style={{ fontSize: 52, marginBottom: 16 }}>📬</div>
+        <div style={{ fontFamily: "var(--serif)", fontSize: 26, fontWeight: 700, color: "var(--tx)", marginBottom: 8, letterSpacing: "-0.5px", lineHeight: 1.2 }}>
+          Request sent.
+        </div>
+        <div style={{ fontFamily: "var(--serif)", fontSize: 18, fontWeight: 400, fontStyle: "italic", color: "var(--g7)", marginBottom: 20, lineHeight: 1.3 }}>
+          We're on it.
         </div>
         <div style={{
           display: "inline-block",
@@ -214,21 +217,21 @@ function UnknownProductView({ query, onBack, onSearchNew }) {
           border: "1px solid rgba(22,101,52,0.15)",
           borderRadius: 12,
           padding: "8px 18px",
-          fontSize: 14,
+          fontSize: 13,
           color: "var(--g7)",
           fontWeight: 600,
-          marginBottom: 16,
+          marginBottom: 18,
           maxWidth: "100%",
           wordBreak: "break-word",
         }}>
           "{displayQuery}"
         </div>
-        <p style={{ fontSize: 14, color: "var(--tx3)", lineHeight: 1.65, maxWidth: 320, margin: "0 auto" }}>
-          This brand or product isn't in our database yet. We've sent a research request to the CleanWear team and will prioritize adding it soon.
+        <p style={{ fontSize: 14, color: "var(--tx3)", lineHeight: 1.7, maxWidth: 320, margin: "0 auto" }}>
+          This one isn't in our database yet. We've logged your request — the more people ask about a product, the faster we research it. Give us a few days.
         </p>
       </div>
 
-      {/* Research request confirmation */}
+      {/* Status card */}
       <div style={{ margin: "0 24px 24px" }}>
         <div style={{
           background: "linear-gradient(135deg, rgba(22,101,52,0.07), rgba(22,101,52,0.03))",
@@ -239,11 +242,11 @@ function UnknownProductView({ query, onBack, onSearchNew }) {
           alignItems: "flex-start",
           gap: 14,
         }}>
-          <div style={{ fontSize: 22, marginTop: 1 }}>📬</div>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ade80", boxShadow: "0 0 8px #4ade80", marginTop: 5, flexShrink: 0 }} />
           <div>
-            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--g7)", marginBottom: 4 }}>Research request sent</div>
-            <div style={{ fontSize: 13, color: "var(--tx3)", lineHeight: 1.6 }}>
-              We track which products get searched most often. The more people ask, the faster we research it. Check back in a few days.
+            <div style={{ fontWeight: 700, fontSize: 14, color: "var(--g7)", marginBottom: 4 }}>Your request is in the queue</div>
+            <div style={{ fontSize: 13, color: "var(--tx3)", lineHeight: 1.65 }}>
+              We work through requests in order of demand. Check back in a few days — if this product shows up as a top request, we'll fast-track it.
             </div>
           </div>
         </div>
@@ -474,7 +477,7 @@ export default function CleanWearApp() {
       }
       logScan({ query: q, score: sc2.overall, brand: pd.brand, product: pd.product_name, category: pd.category,
                 score_v3: _v3score, trace_v3: _v3trace, confidence_tier_v3: _v3tier });
-    } catch (err) { clearInterval(iv); setError("Could not analyze this product. Try a more specific search."); analytics.trackScanFailed(q, err?.message || "unknown"); }
+    } catch (err) { clearInterval(iv); setError("We couldn't pull data for that search. Try a more specific product name — or check back soon, we may be adding it."); analytics.trackScanFailed(q, err?.message || "unknown"); }
     finally { setLoading(false); setLoadStep(""); scanSourceRef.current = "search"; }
   }, [scanMode, navigateToResults, user]);
 

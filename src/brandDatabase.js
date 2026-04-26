@@ -898,3 +898,42 @@ export const BRAND_TIERS = {
   high_risk: { label: "High Risk", color: "#dc2626", range: "0-44" },
 };
 export const BRAND_CATEGORIES = [...new Set(BRANDS.flatMap(b => b.products.map(p => p.cat)))].sort();
+> {
+    // Build a product object the scoring engine understands.
+    // Include product name in materials so keywords like "Dri-FIT",
+    // "Gore-Tex", "Non-Iron" trigger the right REACH flags.
+    const materialStr = (b.materials || []).join(", ") + " " + (p.name || "");
+    const productForEngine = {
+      category: p.cat,
+      materials: materialStr,
+    };
+    const result = engineScore(productForEngine, b);
+    if (result) {
+      p.score = result.score;
+      p.v2 = result;
+    }
+    // If engine returns null (no data at all), keep existing hardcoded score
+  });
+
+  // Recompute brand-level score as average of its products
+  if (b.products.length > 0) {
+    b.score = Math.round(
+      b.products.reduce((sum, p) => sum + p.score, 0) / b.products.length
+    );
+  }
+
+  // Reassign tier based on new score
+  if (b.score >= 70) b.tier = "safe";
+  else if (b.score >= 45) b.tier = "moderate";
+  else b.tier = "high_risk";
+});
+
+// Precomputed lookups
+export const BRAND_BY_ID = Object.fromEntries(BRANDS.map(b => [b.id, b]));
+export const BRAND_BY_NAME = Object.fromEntries(BRANDS.map(b => [b.name.toLowerCase(), b]));
+export const BRAND_TIERS = {
+  safe: { label: "Low Risk", color: "#16a34a", range: "70-100" },
+  moderate: { label: "Moderate", color: "#ca8a04", range: "45-69" },
+  high_risk: { label: "High Risk", color: "#dc2626", range: "0-44" },
+};
+export const BRAND_CATEGORIES = [...new Set(BRANDS.flatMap(b => b.products.map(p => p.cat)))].sort();

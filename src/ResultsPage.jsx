@@ -144,6 +144,7 @@ export default function ResultsPage({
   const [wardrobeSaved, setWardrobeSaved] = useState(false);
   const [exposureOpen, setExposureOpen] = useState(false);
   const [moreAltsOpen, setMoreAltsOpen] = useState(false);
+  const [howWeScoreOpen, setHowWeScoreOpen] = useState(false);
 
   useEffect(() => { const t = setTimeout(() => setMounted(true), 60); return () => clearTimeout(t); }, []);
 
@@ -230,7 +231,7 @@ export default function ResultsPage({
             </svg>
             <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
               <div style={{ fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontSize: 64, fontWeight: 900, color: sc.text, lineHeight: 1, textShadow: `0 0 40px ${sc.text}30` }}>{ov}</div>
-              <div style={{ fontSize: 10, letterSpacing: 2, color: "#71717a", marginTop: 4, textTransform: "uppercase", fontWeight: 600 }}>out of 100</div>
+              <div style={{ fontSize: 10, letterSpacing: 2, color: "#71717a", marginTop: 4, textTransform: "uppercase", fontWeight: 600 }}>risk estimate</div>
             </div>
           </div>
 
@@ -260,7 +261,12 @@ export default function ResultsPage({
                 })}
               </div>
             )}
-            {v2 && <div style={{ fontSize: 11, color: "#52525b", marginTop: 14, letterSpacing: 0.4 }}>Risk assessed from {v2.components.length} public source{v2.components.length !== 1 ? "s" : ""}</div>}
+            {v2 && (
+              <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
+                <div style={{ fontSize: 11, color: "#52525b", letterSpacing: 0.4 }}>Based on {v2.components.length} public source{v2.components.length !== 1 ? "s" : ""} — not a lab test</div>
+                <div style={{ fontSize: 10, color: "#3f3f46", letterSpacing: 0.3 }}>This is what the evidence suggests. Individual products may vary.</div>
+              </div>
+            )}
           </div>
 
           {/* Scroll hint */}
@@ -305,11 +311,12 @@ export default function ResultsPage({
             </div>
             <h3 style={heading}>
               Three weighted components.{" "}
-              <em style={{ fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontStyle: "italic", color: "#4ade80", fontWeight: 500 }}>All cited.</em>
+              <em style={{ fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontStyle: "italic", color: "#4ade80", fontWeight: 500 }}>Population-level research.</em>
             </h3>
             <p style={sub}>
               <span style={{ fontWeight: 600, color: conf.color }}>{conf.label}.</span>{" "}
               <span style={{ color: "#a1a1aa" }}>{conf.desc}</span>
+              {" "}<span style={{ color: "#71717a" }}>Scores reflect known risk patterns for this brand and material type — not a test of this specific garment.</span>
             </p>
 
             {/* Component bars — no card bg, just rows */}
@@ -356,6 +363,42 @@ export default function ResultsPage({
                 Data gap: {v2.gaps.join(" · ")}. Where data is missing, we say so.
               </div>
             )}
+
+            {/* How we score — collapsible */}
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: "0.5px solid rgba(255,255,255,0.06)" }}>
+              <button
+                onClick={() => setHowWeScoreOpen(o => !o)}
+                style={{
+                  background: "none", border: "none", cursor: "pointer", padding: 0,
+                  display: "flex", alignItems: "center", gap: 8, width: "100%",
+                }}
+              >
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#52525b", letterSpacing: 1.8, textTransform: "uppercase" }}>How we score</span>
+                <svg
+                  width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#52525b" strokeWidth="2.5"
+                  style={{ transform: howWeScoreOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s ease", marginLeft: "auto" }}
+                >
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+              {howWeScoreOpen && (
+                <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <p style={{ margin: 0, fontSize: 13, color: "#a1a1aa", lineHeight: 1.7 }}>
+                    We don't test your clothes in a lab. We score them the way a home inspector reads a house — using known patterns, research, and what the evidence suggests.
+                  </p>
+                  <p style={{ margin: 0, fontSize: 13, color: "#a1a1aa", lineHeight: 1.7 }}>
+                    Three things go into every score: what's in the fabric (materials research), who made it (brand safety record), and what type of garment it is (category risk). We weight them, run the math, and tell you what the signals point to.
+                  </p>
+                  <p style={{ margin: 0, fontSize: 13, color: "#a1a1aa", lineHeight: 1.7 }}>
+                    It's a risk estimate, not a lab result. A score of 30 doesn't mean your shirt will hurt you. It means the evidence we have points toward concern. A score of 85 means the evidence points toward clean.
+                  </p>
+                  <p style={{ margin: 0, fontSize: 13, color: "#a1a1aa", lineHeight: 1.7 }}>
+                    When brands publish ingredient lists or hold verified certifications, we use that. When they don't, we use the best available research.{" "}
+                    <span style={{ color: "#71717a", fontStyle: "italic" }}>We tell you which is which.</span>
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

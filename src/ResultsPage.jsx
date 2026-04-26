@@ -310,7 +310,7 @@ export default function ResultsPage({
               Why this score
             </div>
             <h3 style={heading}>
-              {v2?.components?.length === 3 ? "Three" : "Two"} weighted components.{" "}
+              {["One","Two","Three"][Math.min((v2?.components?.length || 1) - 1, 2)]} weighted components.{" "}
               <em style={{ fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontStyle: "italic", color: "#4ade80", fontWeight: 500 }}>Population-level research.</em>
             </h3>
             <p style={sub}>
@@ -321,8 +321,9 @@ export default function ResultsPage({
 
             {/* Component bars — no card bg, just rows */}
             {v2.components.map((c, i) => {
-              const label = c.source === "EU REACH Annex XVII" ? "Regulatory flags"
-                         : "Brand record";
+              const label = c.type === "reach"     ? "Regulatory flags"
+                          : c.type === "materials" ? "Material composition"
+                          : "Brand record";
               const csc = scoreColor(c.score);
               return (
                 <div key={i} style={{ padding: "12px 0", borderTop: i === 0 ? "none" : "0.5px solid rgba(255,255,255,0.06)" }}>

@@ -73,6 +73,7 @@ export function calculateScore(product, brand) {
   const reachFlags = getReachFlags(product.category, getMaterialString(product));
   if (reachFlags.length > 0) {
     components.push({
+      type: "reach",
       source: "EU REACH Annex XVII",
       sourceUrl: SOURCES.ECHA_REACH.url,
       weight: 0.20,
@@ -88,6 +89,7 @@ export function calculateScore(product, brand) {
   const matScore = getMaterialScore(getMaterialString(product));
   if (matScore) {
     components.push({
+      type: "materials",
       source: matScore.source,
       sourceUrl: matScore.sourceUrl,
       weight: 0.35,
@@ -110,6 +112,7 @@ export function calculateScore(product, brand) {
   if (hasBrandData) {
     const brandScore = getBrandScore(brand);
     components.push({
+      type: "brand",
       source: brandScore.source,
       sourceUrl: brandScore.sourceUrl,
       weight: 0.45,

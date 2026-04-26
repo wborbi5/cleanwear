@@ -436,6 +436,8 @@ export default function CleanWearApp() {
       window.posthog?.capture("scan_limit_reached", { scans_used: getScanStatus(user).used });
       return;
     }
+    // Count every scan attempt (not just successes) so the 5-scan limit is reliable
+    if (!user) incrementScanCount();
     setLoading(true); setError(null); setAdded(false); setUnknownQuery(null);
     const isBc = bc || scanMode === "barcode" || scanMode === "camera";
     analytics.trackScanStarted(q, isBc, scanSourceRef.current);
@@ -459,7 +461,6 @@ export default function CleanWearApp() {
         return;
       }
       setResult(pd); setScore(sc2); navigateToResults();
-      incrementScanCount();
       setHasViewedResult(true);
       analytics.trackScanCompleted(q, sc2.overall, pd.brand, pd.product_name, pd.category);
       // V3 shadow scoring — runs in parallel, result logged only, V2 displayed (§I.3)
@@ -597,6 +598,8 @@ export default function CleanWearApp() {
       window.posthog?.capture("scan_limit_reached", { scans_used: getScanStatus(user).used });
       return;
     }
+    // Count every scan attempt
+    if (!user) incrementScanCount();
     setLoading(true); setError(null); setAdded(false);
     analytics.trackScanStarted(product.name, false, "brand_browse_direct");
     const pd = {
@@ -617,7 +620,6 @@ export default function CleanWearApp() {
     setResult(pd);
     setScore(sc2);
     navigateToResults();
-    incrementScanCount();
     setHasViewedResult(true);
     analytics.trackScanCompleted(product.name, sc2.overall, pd.brand, pd.product_name, pd.category);
     logScan({ query: product.name, score: sc2.overall, brand: pd.brand, product: pd.product_name, category: pd.category });

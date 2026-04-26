@@ -34,7 +34,11 @@ export default async function handler(req, res) {
 
       if (cached?.data?.data) {
         console.log('[scan] Cache hit:', q)
-        return res.status(200).json({ ...cached.data.data, _source: 'cache' })
+        const pd = cached.data.data
+        // Always override stored alternatives with fresh category-matched ones
+        // so product type changes in the DB don't leave stale cross-category suggestions
+        pd.alternatives = getAlternatives(q, pd.product_name, pd.category)
+        return res.status(200).json({ ...pd, _source: 'cache' })
       }
     } catch (e) {
       console.warn('[scan] Cache lookup failed:', e.message)
@@ -234,11 +238,7 @@ function parseOpenProductsFacts(product) {
     certifications,
     origin,
     health_notes: 'Product data from Open Products Facts. Chemical analysis based on material composition.',
-    alternatives: [
-      { name: 'Organic Cotton Tee', brand: 'Patagonia', reason: 'GOTS certified organic cotton, minimal chemical treatments.' },
-      { name: 'Merino Wool Base Layer', brand: 'Smartwool', reason: 'Natural fibers without synthetic chemical treatments.' },
-      { name: 'Hemp Blend Tee', brand: 'prAna', reason: 'Hemp is naturally pest-resistant, minimal chemical processing.' },
-    ],
+    alternatives: getAlternatives(null, name, categories),
   }
 }
 
@@ -287,6 +287,130 @@ async function cacheProduct(query, isBarcode, productData) {
   } catch (e) {
     console.warn('[scan] Cache write failed:', e.message)
   }
+}
+
+// ========================================
+// CATEGORY-MATCHED ALTERNATIVES
+// Returns alternatives that match the exact product type being scanned.
+// Leggings → cleaner leggings. Underwear → cleaner underwear. Never cross-category.
+// ========================================
+function getAlternatives(query, productName, category) {
+  const q = ((query || '') + ' ' + (productName || '') + ' ' + (category || '')).toLowerCase()
+
+  // ── Detect product type from combined query + product name + category ──
+  const isLegging    = /legging|tight|yoga pant|yoga pants|compression pant/.test(q)
+  const isBikerShort = /biker short|bike short/.test(q)
+  const isSportsBra  = /sports? bra|bralette|sports? crop|athletic bra/.test(q)
+  const isAthlShort  = !isBikerShort && /\bshort\b/.test(q) && /athletic|run|sport|workout|gym|active/.test(q)
+  const isAthlTop    = /athletic top|workout top|tank top|sport tank|active tank|crop top/.test(q)
+  const isJogger     = /jogger|sweatpant|track pant|lounge pant/.test(q)
+  const isHoodie     = /hoodie|hoody|pullover|sweatshirt/.test(q)
+  const isJacket     = /jacket|coat|parka|windbreaker|anorak|outerwear|vest\b/.test(q)
+  const isJeans      = /jean|denim/.test(q)
+  const isUnderwear  = /underwear|briefs?|boxers?|thong|panty|panties|boyshort|boxer brief/.test(q)
+  const isBra        = !isSportsBra && /\bbra\b/.test(q)
+  const isSock       = /\bsock/.test(q)
+  const isSleepwear  = /pajama|pyjama|sleepwear|nightwear|lounge wear/.test(q)
+  const isSwimwear   = /swim|bikini|swimsuit|boardshort|rashguard/.test(q)
+  const isDress      = /\bdress\b|\bskirt\b/.test(q)
+  const isTee        = !isLegging && !isSportsBra && !isAthlShort && !isJogger && /\btee\b|\bt-shirt\b|\btop\b|\bshirt\b/.test(q)
+
+  if (isLegging) return [
+    { name: 'Aspen Leggings', brand: 'Reprise', reason: 'TENCEL™ Lyocell — plant-based, OEKO-TEX 100 certified. No PFAS, no antimony, no microplastic shedding.' },
+    { name: 'Centered Crop Tights', brand: 'Patagonia', reason: 'Recycled nylon with Fair Trade certification. Transparent supply chain.' },
+    { name: 'Active Legging', brand: 'Pact', reason: 'GOTS-certified organic cotton blend. No synthetic dyes, no chemical finishes.' },
+  ]
+
+  if (isBikerShort) return [
+    { name: 'Sage Shorts', brand: 'Reprise', reason: 'TENCEL™ Lyocell — plant-based, OEKO-TEX 100 certified. No PFAS or synthetic coatings.' },
+    { name: 'Baggies Shorts', brand: 'Patagonia', reason: 'Recycled nylon, Fair Trade certified, no DWR coating on skin-contact surfaces.' },
+    { name: 'Natural Biker Short', brand: 'Pact', reason: 'GOTS-certified organic cotton with no chemical finishes.' },
+  ]
+
+  if (isSportsBra) return [
+    { name: 'Rowan Bralette', brand: 'Reprise', reason: 'TENCEL™ Lyocell, OEKO-TEX 100 certified. Close skin contact makes fabric choice critical — this is one of the cleanest options available.' },
+    { name: 'Barely Sports Bra', brand: 'Patagonia', reason: 'Recycled content, Fair Trade certified, no PFAS treatments.' },
+    { name: 'Classic Sports Bra', brand: 'Pact', reason: 'GOTS-certified organic cotton. No synthetic dyes, no chemical finishes.' },
+  ]
+
+  if (isAthlShort) return [
+    { name: 'Aspen Shorts', brand: 'Reprise', reason: 'TENCEL™ Lyocell — plant-based, OEKO-TEX 100 certified. No PFAS or microplastic shedding.' },
+    { name: 'Baggies Shorts', brand: 'Patagonia', reason: 'Recycled nylon, Fair Trade certified.' },
+    { name: 'Natural Run Short', brand: 'Pact', reason: 'Organic cotton blend with no chemical finishes.' },
+  ]
+
+  if (isAthlTop) return [
+    { name: 'Cap Cool Daily Graphic Tee', brand: 'Patagonia', reason: 'Recycled polyester, Fair Trade certified. Holds bluesign® approval for chemical management.' },
+    { name: 'Organic Cotton Active Tank', brand: 'Pact', reason: 'GOTS-certified organic cotton. No synthetic chemical treatments.' },
+    { name: 'Hemp Blend Active Top', brand: 'prAna', reason: 'Hemp is naturally pest-resistant and requires minimal chemical processing.' },
+  ]
+
+  if (isJogger) return [
+    { name: 'Organic Cotton Sweatpants', brand: 'Reprise', reason: 'GOTS-certified organic cotton. Grown without synthetic pesticides, no chemical finishes.' },
+    { name: 'Hampi Rock Pants', brand: 'Patagonia', reason: 'Organic cotton with Fair Trade certification.' },
+    { name: 'Sunday Sweatpant', brand: 'Pact', reason: 'GOTS organic cotton throughout, no synthetic dyes.' },
+  ]
+
+  if (isHoodie) return [
+    { name: 'Better Sweater Hoody', brand: 'Patagonia', reason: 'Recycled polyester fleece, Fair Trade certified. Significantly lower chemical load than virgin synthetics.' },
+    { name: 'Organic Cotton Hoodie', brand: 'Pact', reason: 'GOTS-certified organic cotton, no chemical finishes.' },
+    { name: 'Classic Organic Hoody', brand: 'tentree', reason: 'Organic cotton and recycled materials, B Corp certified.' },
+  ]
+
+  if (isJacket) return [
+    { name: 'Nano Puff Jacket', brand: 'Patagonia', reason: 'PFC-free DWR coating, recycled shell. First major brand to eliminate PFAS from outerwear.' },
+    { name: 'Stretch Zion Jacket', brand: 'prAna', reason: 'bluesign® certified fabrics, transparent chemical management.' },
+    { name: 'Torrentshell Jacket', brand: 'Patagonia', reason: 'Fair Trade certified, PFC-free, recycled materials throughout.' },
+  ]
+
+  if (isJeans) return [
+    { name: 'Performance Denim Jeans', brand: 'Patagonia', reason: 'Organic cotton, Fair Trade certified. No formaldehyde wrinkle treatments.' },
+    { name: 'Slim Fit Organic Jeans', brand: 'Pact', reason: 'GOTS-certified organic cotton denim, no synthetic dye treatments.' },
+    { name: 'Axiom Jean', brand: 'prAna', reason: 'bluesign® certified. Chemical management verified at the fabric level.' },
+  ]
+
+  if (isUnderwear) return [
+    { name: 'Organic Cotton Briefs', brand: 'Pact', reason: 'GOTS-certified organic cotton. Direct skin contact makes fabric choice most critical here — no synthetic dyes, no chemical finishes.' },
+    { name: 'Organic Cotton Underwear', brand: 'Coyuchi', reason: 'GOTS-certified organic cotton, OEKO-TEX tested. Clean at the fiber level.' },
+    { name: 'Bamboo Underwear', brand: 'Boody', reason: 'Bamboo lyocell — closed-loop process, significantly lower chemical load than conventional cotton.' },
+  ]
+
+  if (isBra) return [
+    { name: 'Organic Cotton Bra', brand: 'Pact', reason: 'GOTS-certified organic cotton. No synthetic dyes, no chemical finishes — especially important for constant skin contact.' },
+    { name: 'Organic Cotton Bralette', brand: 'Coyuchi', reason: 'GOTS-certified, OEKO-TEX tested. Clean at the fiber level.' },
+    { name: 'Bamboo Bra', brand: 'Boody', reason: 'Bamboo lyocell, closed-loop production, no harsh chemical processing.' },
+  ]
+
+  if (isSock) return [
+    { name: 'PhD Outdoor Light Crew', brand: 'Smartwool', reason: 'Merino wool — natural odor resistance, no synthetic antimicrobial chemical treatments needed.' },
+    { name: 'Hike Medium Crew Sock', brand: 'Darn Tough', reason: 'Merino wool, made in USA. No synthetic chemical additives.' },
+    { name: 'Organic Cotton Crew Sock', brand: 'Pact', reason: 'GOTS-certified organic cotton, no synthetic dyes.' },
+  ]
+
+  if (isSleepwear) return [
+    { name: 'Organic Percale PJ Set', brand: 'Coyuchi', reason: 'GOTS-certified organic cotton. Sleepwear has some of the highest flame-retardant risk — organic cotton avoids most of it.' },
+    { name: 'Organic Cotton Sleep Set', brand: 'Pact', reason: 'GOTS-certified, no chemical finishes, no flame retardant treatments.' },
+    { name: 'Linen Sleep Set', brand: 'Quince', reason: 'Pure linen — naturally less flammable than synthetics, minimal chemical processing needed.' },
+  ]
+
+  if (isSwimwear) return [
+    { name: 'Shell Yeah Bikini', brand: 'Patagonia', reason: 'Recycled nylon, no PFC treatments, Fair Trade certified.' },
+    { name: 'Regenerative Organic Cotton Swim', brand: 'prAna', reason: 'Organic cotton blend, bluesign® certified fabrics.' },
+    { name: 'Recycled Nylon Swimsuit', brand: 'Girlfriend Collective', reason: 'OEKO-TEX certified recycled nylon. Significantly cleaner than virgin synthetic swimwear.' },
+  ]
+
+  if (isDress) return [
+    { name: 'Organic Cotton Wrap Dress', brand: 'Eileen Fisher', reason: 'GOTS-certified organic cotton, B Corp certified, transparent supply chain.' },
+    { name: 'Farm-to-Closet Dress', brand: 'Christy Dawn', reason: 'Regenerative organic cotton grown on their own farms. Chemical-free from field to finished garment.' },
+    { name: 'Organic Cotton Midi Dress', brand: 'Pact', reason: 'GOTS-certified organic cotton. No synthetic dyes, no chemical finishes.' },
+  ]
+
+  // Default: t-shirt / top / general
+  return [
+    { name: 'Organic Cotton Tee', brand: 'Patagonia', reason: 'GOTS-certified organic cotton, Fair Trade certified. Minimal chemical treatments.' },
+    { name: 'Organic Classic Crew Tee', brand: 'Pact', reason: 'GOTS-certified organic cotton. No synthetic dyes, no formaldehyde finishes.' },
+    { name: 'Hemp Blend Tee', brand: 'prAna', reason: 'Hemp is naturally pest-resistant. Requires minimal pesticides and chemical processing to grow.' },
+  ]
 }
 
 // ========================================
@@ -344,11 +468,7 @@ function buildFallback(query, isBarcode) {
     certifications: hasOrganic ? ['oeko-tex'] : [],
     origin: isSafe ? 'Vietnam' : isFastFashion ? 'China' : 'Unknown',
     health_notes: 'Score based on brand safety data and typical materials for this product type. Specific product not yet in database.',
-    alternatives: [
-      { name: 'Organic Cotton Tee', brand: 'Patagonia', reason: 'GOTS certified organic cotton, minimal chemical treatments, transparent supply chain.' },
-      { name: 'Merino Wool Base Layer', brand: 'Smartwool', reason: 'Natural temperature regulation without synthetic chemicals.' },
-      { name: 'Hemp Blend Tee', brand: 'prAna', reason: 'Hemp is naturally pest-resistant, requiring minimal pesticides and chemical processing.' },
-    ],
+    alternatives: getAlternatives(query, null, isAthletic ? 'Athletic' : 'Casual'),
     _brand_level_only: true,
   }
 }

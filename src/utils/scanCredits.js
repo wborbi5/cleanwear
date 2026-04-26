@@ -24,8 +24,10 @@ export function getAvailableScans() {
 
 /** Check if user can scan */
 export function canScan(user) {
-  // Scan limit removed — unlimited scans for all users.
-  return true;
+  // Authenticated users get unlimited scans
+  if (user) return true;
+  // Anonymous users get FREE_SCAN_LIMIT (5) free scans
+  return getAvailableScans() > 0;
 }
 
 /** Increment scan count after a scan */
@@ -48,7 +50,9 @@ export function resetLocalScanData() {
 
 /** Get display info for UI */
 export function getScanStatus(user) {
+  if (user) return { unlimited: true, remaining: Infinity, used: getScanCount(), bonus: getBonusCredits() };
   const used = getScanCount();
   const bonus = getBonusCredits();
-  return { unlimited: true, remaining: Infinity, used, bonus };
+  const remaining = Math.max(0, FREE_SCAN_LIMIT + bonus - used);
+  return { unlimited: false, remaining, used, bonus };
 }

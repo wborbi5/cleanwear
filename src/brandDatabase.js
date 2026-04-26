@@ -87,6 +87,24 @@ export const BRANDS = [
       { name: "Organic Sleep & Play", score: 93, cat: "Kids" },
     ]},
 
+  { id: "reprise_activewear", name: "Reprise Activewear", score: 84, logo: "🌿", tier: "safe",
+    summary: "Plant-based activewear brand. Primary fabric is TENCEL Lyocell (OEKO-TEX 100 certified, closed-loop Lyocell process). Organic cotton line is GOTS certified. No PFAS DWR treatments. One of the cleanest activewear options available.",
+    materials: ["TENCEL Lyocell", "Organic Cotton", "Spandex"],
+    certs: ["OEKO-TEX 100", "GOTS"],
+    chemicals: [], origin: "USA",
+    products: [
+      { name: "Aspen Leggings", score: 82, cat: "Athletic" },
+      { name: "Fusion Leggings", score: 82, cat: "Athletic" },
+      { name: "Willow Leggings", score: 82, cat: "Athletic" },
+      { name: "Sage Legging", score: 82, cat: "Athletic" },
+      { name: "Aspen Sports Bra", score: 82, cat: "Athletic" },
+      { name: "Fusion Bra", score: 82, cat: "Athletic" },
+      { name: "Aero Tank", score: 82, cat: "Athletic" },
+      { name: "Organic Cotton Sweatshirt", score: 85, cat: "Casual" },
+      { name: "Wear Plants T-Shirt", score: 85, cat: "Casual" },
+      { name: "Organic Crewneck Sweatpants", score: 85, cat: "Casual" },
+    ]},
+
   // ---- MODERATE TIER (45-69) ----
   { id: "levis", name: "Levi's", score: 67, logo: "👖", tier: "moderate",
     summary: "Cotton-heavy product line reduces chemical risk. Water<Less program reduces processing chemicals. Some synthetic blends in stretch denim.",
@@ -807,6 +825,7 @@ const BRAND_SAFETY_DATA = {
   everlane:         { nrdc_pfas_rating: null,  oeko_tex_certified: false, good_on_you_rating: "good", confidence_tier: 3, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
   victorias_secret: { nrdc_pfas_rating: null,  oeko_tex_certified: false, good_on_you_rating: "not good enough", confidence_tier: 3, data_sources: [{ name: "Good On You", url: "https://goodonyou.eco", year: 2024 }] },
   "2xu":            { nrdc_pfas_rating: null,  oeko_tex_certified: false, good_on_you_rating: null, confidence_tier: 4, data_sources: [] },
+  reprise_activewear: { nrdc_pfas_rating: null, oeko_tex_certified: true, good_on_you_rating: null, gots_certified: true, confidence_tier: 2, data_sources: [{ name: "OEKO-TEX Label Check", url: "https://www.oeko-tex.com/en/label-check", year: 2024 }, { name: "GOTS Registry", url: "https://global-standard.org", year: 2024 }] },
 };
 
 // Merge safety data into brand records
@@ -841,6 +860,45 @@ BRANDS.forEach(b => {
 // This replaces all hardcoded scores with engine-computed values.
 BRANDS.forEach(b => {
   b.products.forEach(p => {
+    // Build a product object the scoring engine understands.
+    // Include product name in materials so keywords like "Dri-FIT",
+    // "Gore-Tex", "Non-Iron" trigger the right REACH flags.
+    const materialStr = (b.materials || []).join(", ") + " " + (p.name || "");
+    const productForEngine = {
+      category: p.cat,
+      materials: materialStr,
+    };
+    const result = engineScore(productForEngine, b);
+    if (result) {
+      p.score = result.score;
+      p.v2 = result;
+    }
+    // If engine returns null (no data at all), keep existing hardcoded score
+  });
+
+  // Recompute brand-level score as average of its products
+  if (b.products.length > 0) {
+    b.score = Math.round(
+      b.products.reduce((sum, p) => sum + p.score, 0) / b.products.length
+    );
+  }
+
+  // Reassign tier based on new score
+  if (b.score >= 70) b.tier = "safe";
+  else if (b.score >= 45) b.tier = "moderate";
+  else b.tier = "high_risk";
+});
+
+// Precomputed lookups
+export const BRAND_BY_ID = Object.fromEntries(BRANDS.map(b => [b.id, b]));
+export const BRAND_BY_NAME = Object.fromEntries(BRANDS.map(b => [b.name.toLowerCase(), b]));
+export const BRAND_TIERS = {
+  safe: { label: "Low Risk", color: "#16a34a", range: "70-100" },
+  moderate: { label: "Moderate", color: "#ca8a04", range: "45-69" },
+  high_risk: { label: "High Risk", color: "#dc2626", range: "0-44" },
+};
+export const BRAND_CATEGORIES = [...new Set(BRANDS.flatMap(b => b.products.map(p => p.cat)))].sort();
+> {
     // Build a product object the scoring engine understands.
     // Include product name in materials so keywords like "Dri-FIT",
     // "Gore-Tex", "Non-Iron" trigger the right REACH flags.

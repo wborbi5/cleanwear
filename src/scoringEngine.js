@@ -69,13 +69,13 @@ export function calculateScore(product, brand) {
   const flags = [];
   const gaps = [];
 
-  // COMPONENT 1: Regulatory flags (ECHA REACH Annex XVII)
+  // COMPONENT 1: Regulatory flags (ECHA REACH Annex XVII) — 45%
   const reachFlags = getReachFlags(product.category, getMaterialString(product));
   if (reachFlags.length > 0) {
     components.push({
       source: "EU REACH Annex XVII",
       sourceUrl: SOURCES.ECHA_REACH.url,
-      weight: 0.25,
+      weight: 0.45,
       score: reachFlags.length > 2 ? 40 : reachFlags.length > 0 ? 65 : 90,
       label: `${reachFlags.length} regulated chemical class(es) associated with this garment type`
     });
@@ -84,32 +84,18 @@ export function calculateScore(product, brand) {
     gaps.push("REACH regulatory mapping not available for this category");
   }
 
-  // COMPONENT 2: Brand safety record
+  // COMPONENT 2: Brand safety record — 55%
   if (brand && brand.confidence_tier <= 3) {
     const brandScore = getBrandScore(brand);
     components.push({
       source: brandScore.source,
       sourceUrl: brandScore.sourceUrl,
-      weight: 0.35,
+      weight: 0.55,
       score: brandScore.score,
       label: brandScore.label
     });
   } else {
     gaps.push("No brand-level safety data on record");
-  }
-
-  // COMPONENT 3: Category research benchmarks
-  const categoryData = getCategoryResearch(product.category, getMaterialString(product));
-  if (categoryData) {
-    components.push({
-      source: categoryData.study,
-      sourceUrl: categoryData.url,
-      weight: 0.40,
-      score: categoryData.riskScore,
-      label: categoryData.finding
-    });
-  } else {
-    gaps.push("No published testing data for this garment category");
   }
 
   // If no components have data, return null (show data gap)

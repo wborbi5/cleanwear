@@ -126,8 +126,8 @@ function scoreColor(s) {
 
 const CONFIDENCE = {
   1: { color: "#4ade80", bg: "rgba(74,222,128,0.10)",  border: "rgba(74,222,128,0.25)",  label: "Lab Verified",     desc: "This product has been independently tested by an accredited lab." },
-  2: { color: "#c9a84c", bg: "rgba(201,168,76,0.10)",  border: "rgba(201,168,76,0.25)",  label: "Strong Evidence",  desc: "Score based on brand-level safety data and published category research." },
-  3: { color: "#a1a1aa", bg: "rgba(161,161,170,0.10)", border: "rgba(161,161,170,0.25)", label: "Partial Data",     desc: "Based on category research only. We lack brand-specific safety data for a fully confident score." },
+  2: { color: "#c9a84c", bg: "rgba(201,168,76,0.10)",  border: "rgba(201,168,76,0.25)",  label: "Strong Evidence",  desc: "Score based on brand-level safety data and regulatory flag data." },
+  3: { color: "#a1a1aa", bg: "rgba(161,161,170,0.10)", border: "rgba(161,161,170,0.25)", label: "Partial Data",     desc: "Partial data available. We lack brand-specific safety data for a fully confident score." },
   4: { color: "#f87171", bg: "rgba(248,113,113,0.10)", border: "rgba(248,113,113,0.25)", label: "Insufficient Data", desc: "Limited public data available. This score may not reflect the actual chemical profile of this product." },
 };
 
@@ -310,7 +310,7 @@ export default function ResultsPage({
               Why this score
             </div>
             <h3 style={heading}>
-              Three weighted components.{" "}
+              Two weighted components.{" "}
               <em style={{ fontFamily: "var(--cw-font-serif, 'Playfair Display', serif)", fontStyle: "italic", color: "#4ade80", fontWeight: 500 }}>Population-level research.</em>
             </h3>
             <p style={sub}>
@@ -322,8 +322,7 @@ export default function ResultsPage({
             {/* Component bars — no card bg, just rows */}
             {v2.components.map((c, i) => {
               const label = c.source === "EU REACH Annex XVII" ? "Regulatory flags"
-                         : c.source.match(/NRDC|Good On You|OEKO-TEX|GOTS|bluesign|General/) ? "Brand record"
-                         : "Category research";
+                         : "Brand record";
               const csc = scoreColor(c.score);
               return (
                 <div key={i} style={{ padding: "12px 0", borderTop: i === 0 ? "none" : "0.5px solid rgba(255,255,255,0.06)" }}>
@@ -387,7 +386,7 @@ export default function ResultsPage({
                     We don't test your clothes in a lab. We score them the way a home inspector reads a house — using known patterns, research, and what the evidence suggests.
                   </p>
                   <p style={{ margin: 0, fontSize: 13, color: "#a1a1aa", lineHeight: 1.7 }}>
-                    Three things go into every score: what's in the fabric (materials research), who made it (brand safety record), and what type of garment it is (category risk). We weight them, run the math, and tell you what the signals point to.
+                    Two things go into every score: who made it (brand safety record — 55%) and what regulated chemicals are flagged for this fabric type by EU REACH (regulatory flags — 45%). We weight them, run the math, and tell you what the signals point to.
                   </p>
                   <p style={{ margin: 0, fontSize: 13, color: "#a1a1aa", lineHeight: 1.7 }}>
                     It's a risk estimate, not a lab result. A score of 30 doesn't mean your shirt will hurt you. It means the evidence we have points toward concern. A score of 85 means the evidence points toward clean.

@@ -477,7 +477,7 @@ export default function CleanWearApp() {
       }
       logScan({ query: q, score: sc2.overall, brand: pd.brand, product: pd.product_name, category: pd.category,
                 score_v3: _v3score, trace_v3: _v3trace, confidence_tier_v3: _v3tier });
-    } catch (err) { clearInterval(iv); setError("We couldn't pull data for that search. Try a more specific product name — or check back soon, we may be adding it."); analytics.trackScanFailed(q, err?.message || "unknown"); }
+    } catch (err) { clearInterval(iv); setUnknownQuery(q); navigateToResults(); analytics.trackScanFailed(q, err?.message || "unknown"); }
     finally { setLoading(false); setLoadStep(""); scanSourceRef.current = "search"; }
   }, [scanMode, navigateToResults, user]);
 
@@ -525,15 +525,8 @@ export default function CleanWearApp() {
   const renderScanner = () => (<>
     <div className="hero"><div className="hero-eyebrow">Textile Safety Intelligence</div><h1>What's actually <em style={{fontFamily:'var(--sans)'}}>in</em> your clothes?</h1><div className="hero-sub">Search any brand and product, or scan a care tag. We pull published research and regulatory data to score it.</div></div>
     <div className="scan-area">
-      {showCamera ? (<CameraScanner onResult={(r) => { setShowCamera(false); if (r.type === "barcode") { setQuery(r.value); scanSourceRef.current = "camera"; analytics.trackBarcodeDetected(r.value); doScan(r.value, true); } else { if (!canScan(user)) { setScanLimitOpen(true); return; } setResult(r.value); const sc2 = calculateScore(r.value); setScore(sc2); navigateToResults(); incrementScanCount(); setHasViewedResult(true); analytics.trackScanCompleted(r.value.product_name, sc2.overall, r.value.brand, r.value.product_name, r.value.category); logScan({ query: r.value.product_name, score: sc2.overall, brand: r.value.brand, product: r.value.product_name, category: r.value.category }); } }} onClose={() => setShowCamera(false)} />) : (<>
       <div className="scan-field"><input type="text" placeholder="Search brand + product name..." value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { scanSourceRef.current = "search"; doScan(query); } }} /><button className="scan-go" onClick={() => { scanSourceRef.current = "search"; doScan(query); }}>{"\u2192"}</button></div>
-      <div className="scan-or"><span>or</span></div>
-      <button onClick={() => setShowCamera(true)} className="cam-cta">
-        <span style={{ fontSize: 32 }}>{"\ud83d\udcf7"}</span>
-        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--g7)" }}>Scan Tag or Barcode</span>
-        <span style={{ fontSize: 12, color: "var(--tx4)" }}>Point your camera at the care tag</span>
-      </button>
-      </>)}</div>
+      </div>
     <div className="quick"><div className="quick-label">Popular Scans</div><div className="quick-grid">{["Nike Dri-FIT Tee", "Lululemon Align Leggings", "Under Armour HeatGear", "Patagonia Organic Tee", "Calvin Klein Boxer Brief", "Gymshark Shorts"].map(item => (<button key={item} className="quick-chip" onClick={() => { setQuery(item); scanSourceRef.current = "quick_scan"; analytics.trackQuickScan(item); doScan(item); }}>{item}</button>))}</div></div>
     <div className="howto">
       <div className="howto-label">How It Works</div>

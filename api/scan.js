@@ -298,10 +298,10 @@ function getAlternatives(query, productName, category) {
   const q = ((query || '') + ' ' + (productName || '') + ' ' + (category || '')).toLowerCase()
 
   // ── Detect product type from combined query + product name + category ──
-  const isLegging    = /legging|tight|yoga pant|yoga pants|compression pant/.test(q)
-  const isBikerShort = /biker short|bike short/.test(q)
-  const isSportsBra  = /sports? bra|bralette|sports? crop|athletic bra/.test(q)
-  const isAthlShort  = !isBikerShort && /\bshort\b/.test(q) && /athletic|run|sport|workout|gym|active/.test(q)
+  const isLegging    = /leggings?|tights?|yoga pants?|compression pants?|align|groove pant|wunder|sculpt pant|base layer pant/.test(q)
+  const isBikerShort = /biker shorts?|bike shorts?|cycling short/.test(q)
+  const isSportsBra  = /sports? bras?|bralettes?|sports? crop|athletic bra|training bra|workout bra|stratos|fusion bra|aspen bra/.test(q)
+  const isAthlShort  = !isBikerShort && !isLegging && /\bshorts?\b/.test(q) && /athletic|run|sport|workout|gym|active|training/.test(q)
   const isAthlTop    = /athletic top|workout top|tank top|sport tank|active tank|crop top/.test(q)
   const isJogger     = /jogger|sweatpant|track pant|lounge pant/.test(q)
   const isHoodie     = /hoodie|hoody|pullover|sweatshirt/.test(q)

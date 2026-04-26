@@ -69,14 +69,14 @@ export function calculateScore(product, brand) {
   const flags = [];
   const gaps = [];
 
-  // COMPONENT 1: Regulatory flags (ECHA REACH Annex XVII) — 45%
+  // COMPONENT 1: Regulatory flags (ECHA REACH Annex XVII) — 20%
   const reachFlags = getReachFlags(product.category, getMaterialString(product));
   if (reachFlags.length > 0) {
     components.push({
       source: "EU REACH Annex XVII",
       sourceUrl: SOURCES.ECHA_REACH.url,
-      weight: 0.45,
-      score: reachFlags.length > 2 ? 40 : reachFlags.length > 0 ? 65 : 90,
+      weight: 0.20,
+      score: reachFlags.length > 2 ? 40 : 65,
       label: `${reachFlags.length} regulated chemical class(es) associated with this garment type`
     });
     flags.push(...reachFlags);
@@ -84,30 +84,57 @@ export function calculateScore(product, brand) {
     gaps.push("REACH regulatory mapping not available for this category");
   }
 
-  // COMPONENT 2: Brand safety record — 55%
-  if (brand && brand.confidence_tier <= 3) {
+  // COMPONENT 2: Material composition (Mamavation 2022 / ECHA REACH) — 35%
+  const matScore = getMaterialScore(getMaterialString(product));
+  if (matScore) {
+    components.push({
+      source: matScore.source,
+      sourceUrl: matScore.sourceUrl,
+      weight: 0.35,
+      score: matScore.score,
+      label: matScore.label
+    });
+  } else {
+    gaps.push("Material composition data not available");
+  }
+
+  // COMPONENT 3: Brand safety record — 45%
+  // Only included when we have actual cited data. Generic "unknown brand" is not a data point.
+  const hasBrandData = brand && (
+    brand.nrdc_pfas_rating ||
+    brand.good_on_you_rating ||
+    brand.oeko_tex_certified ||
+    brand.gots_certified ||
+    brand.bluesign_certified
+  );
+  if (hasBrandData) {
     const brandScore = getBrandScore(brand);
     components.push({
       source: brandScore.source,
       sourceUrl: brandScore.sourceUrl,
-      weight: 0.55,
+      weight: 0.45,
       score: brandScore.score,
       label: brandScore.label
     });
   } else {
-    gaps.push("No brand-level safety data on record");
+    gaps.push("No cited brand-level safety data on record");
   }
 
-  // If no components have data, return null (show data gap)
+  // If no components resolved, return null (show data gap UI)
   if (components.length === 0) return null;
 
-  // Weighted average of components that have data
+  // Weighted average — totalWeight normalizes when some components are absent
   const totalWeight = components.reduce((sum, c) => sum + c.weight, 0);
   const weightedScore = components.reduce((sum, c) => sum + (c.score * c.weight), 0) / totalWeight;
 
+  // Confidence tier reflects source quality
+  let tier = 4;
+  if (hasBrandData && brand.confidence_tier <= 2) tier = 2;
+  else if (components.length >= 2) tier = 3;
+
   return {
     score: Math.round(weightedScore),
-    confidence_tier: Math.min(...components.map(() => 3), brand?.confidence_tier || 4),
+    confidence_tier: tier,
     components,
     flags,
     gaps,
@@ -146,105 +173,128 @@ function getReachFlags(category, materials) {
   return flags;
 }
 
+// ── Material Composition Score ───────────────────────────────
+// Scores derived from published fiber testing. Every tier maps to a cited source.
+function getMaterialScore(materials) {
+  const mat = (materials || "").toLowerCase();
+  if (!mat.trim()) return null;
+
+  const NATURAL   = ["cotton", "wool", "linen", "hemp", "silk", "cashmere", "alpaca", "down"];
+  const REGEN     = ["tencel", "lyocell", "modal", "viscose", "rayon", "bamboo", "cupro"];
+  const SYNTHETIC = ["polyester", "nylon", "acrylic", "spandex", "elastane", "lycra", "polypropylene", "polyamide"];
+
+  const hasCert      = mat.includes("organic") || mat.includes("gots") || mat.includes("oeko-tex");
+  const hasNatural   = NATURAL.some(f => mat.includes(f));
+  const hasRegen     = REGEN.some(f => mat.includes(f));
+  const hasSynthetic = SYNTHETIC.some(f => mat.includes(f));
+
+  // Parse percentages out of strings like "81% Nylon, 19% Lycra"
+  let synthPct = 0, naturalPct = 0, regenPct = 0;
+  let hasPctData = false;
+  const pctRe = /(\d+)%\s*([a-z][a-z\s\-]*)/g;
+  let m;
+  while ((m = pctRe.exec(mat)) !== null) {
+    const pct = parseInt(m[1]);
+    const fiber = m[2].trim();
+    hasPctData = true;
+    if (SYNTHETIC.some(s => fiber.includes(s))) synthPct += pct;
+    else if (REGEN.some(s => fiber.includes(s)))     regenPct += pct;
+    else if (NATURAL.some(s => fiber.includes(s)))   naturalPct += pct;
+  }
+
+  // Certified organic / low-impact — best possible material score
+  if (hasCert && (hasNatural || hasRegen)) {
+    return {
+      score: 84,
+      source: SOURCES.ECHA_REACH.name,
+      sourceUrl: SOURCES.ECHA_REACH.url,
+      label: "Certified organic or low-impact fiber — lowest chemical treatment risk (ECHA REACH)"
+    };
+  }
+
+  // Use percentage data when available — more precise
+  if (hasPctData) {
+    if (synthPct >= 80) return {
+      score: 32,
+      source: SOURCES.MAMAVATION_2022.name,
+      sourceUrl: SOURCES.MAMAVATION_2022.url,
+      label: `${synthPct}% synthetic — elevated PFAS and chemical residue risk (Mamavation 2022)`
+    };
+    if (synthPct >= 50) return {
+      score: 40,
+      source: SOURCES.MAMAVATION_2022.name,
+      sourceUrl: SOURCES.MAMAVATION_2022.url,
+      label: `Majority synthetic blend (${synthPct}% synthetic) — moderate-high chemical residue risk (Mamavation 2022)`
+    };
+    if (synthPct >= 20) return {
+      score: 55,
+      source: SOURCES.ECHA_REACH.name,
+      sourceUrl: SOURCES.ECHA_REACH.url,
+      label: `Synthetic blend (${synthPct}% synthetic) — moderate chemical risk profile (ECHA REACH)`
+    };
+    if (regenPct >= 50 && naturalPct < 30) return {
+      score: 65,
+      source: SOURCES.ECHA_REACH.name,
+      sourceUrl: SOURCES.ECHA_REACH.url,
+      label: `${regenPct}% regenerated cellulose — chemical processing involved, low residue risk (ECHA REACH)`
+    };
+    if (naturalPct >= 70) return {
+      score: 78,
+      source: SOURCES.ECHA_REACH.name,
+      sourceUrl: SOURCES.ECHA_REACH.url,
+      label: `${naturalPct}% natural fiber — lower chemical finishing risk than synthetic fabrics (ECHA REACH)`
+    };
+  }
+
+  // Keyword fallback when no percentages are present
+  if (hasRegen && !hasSynthetic) return {
+    score: 65,
+    source: SOURCES.ECHA_REACH.name,
+    sourceUrl: SOURCES.ECHA_REACH.url,
+    label: "Regenerated cellulose fiber (TENCEL/Modal/Viscose) — moderate processing, low residue risk (ECHA REACH)"
+  };
+  if (hasNatural && !hasSynthetic) return {
+    score: 78,
+    source: SOURCES.ECHA_REACH.name,
+    sourceUrl: SOURCES.ECHA_REACH.url,
+    label: "Natural fiber composition — lower chemical finishing risk than synthetic performance fabrics (ECHA REACH)"
+  };
+  if (hasSynthetic && !hasNatural && !hasRegen) return {
+    score: 36,
+    source: SOURCES.MAMAVATION_2022.name,
+    sourceUrl: SOURCES.MAMAVATION_2022.url,
+    label: "Synthetic fiber composition — elevated chemical residue risk in published testing (Mamavation 2022)"
+  };
+  if (hasSynthetic && (hasNatural || hasRegen)) return {
+    score: 52,
+    source: SOURCES.ECHA_REACH.name,
+    sourceUrl: SOURCES.ECHA_REACH.url,
+    label: "Mixed natural/synthetic composition — moderate chemical risk profile (ECHA REACH)"
+  };
+
+  return null;
+}
+
 // ── Brand Score Lookup ───────────────────────────────────────
 function getBrandScore(brand) {
   const name = brand.brand_name || brand.name || "Unknown";
 
   if (brand.nrdc_pfas_rating === "A+") return { score: 88, source: SOURCES.NRDC_PFAS.name, sourceUrl: SOURCES.NRDC_PFAS.url, label: `${name} earned A+ on PFAS elimination (NRDC 2023)` };
-  if (brand.nrdc_pfas_rating === "A") return { score: 82, source: SOURCES.NRDC_PFAS.name, sourceUrl: SOURCES.NRDC_PFAS.url, label: `${name} earned A on PFAS elimination (NRDC 2023)` };
-  if (brand.nrdc_pfas_rating === "B") return { score: 68, source: SOURCES.NRDC_PFAS.name, sourceUrl: SOURCES.NRDC_PFAS.url, label: `${name} earned B on PFAS elimination — claims in progress (NRDC 2023)` };
-  if (brand.nrdc_pfas_rating === "C") return { score: 52, source: SOURCES.NRDC_PFAS.name, sourceUrl: SOURCES.NRDC_PFAS.url, label: `${name} earned C on PFAS elimination (NRDC 2023)` };
-  if (brand.nrdc_pfas_rating === "D") return { score: 38, source: SOURCES.NRDC_PFAS.name, sourceUrl: SOURCES.NRDC_PFAS.url, label: `${name} earned D on PFAS elimination (NRDC 2023)` };
-  if (brand.nrdc_pfas_rating === "F") return { score: 28, source: SOURCES.NRDC_PFAS.name, sourceUrl: SOURCES.NRDC_PFAS.url, label: `${name} received F on PFAS elimination policy (NRDC 2023)` };
+  if (brand.nrdc_pfas_rating === "A")  return { score: 82, source: SOURCES.NRDC_PFAS.name, sourceUrl: SOURCES.NRDC_PFAS.url, label: `${name} earned A on PFAS elimination (NRDC 2023)` };
+  if (brand.nrdc_pfas_rating === "B")  return { score: 68, source: SOURCES.NRDC_PFAS.name, sourceUrl: SOURCES.NRDC_PFAS.url, label: `${name} earned B on PFAS elimination — claims in progress (NRDC 2023)` };
+  if (brand.nrdc_pfas_rating === "C")  return { score: 52, source: SOURCES.NRDC_PFAS.name, sourceUrl: SOURCES.NRDC_PFAS.url, label: `${name} earned C on PFAS elimination (NRDC 2023)` };
+  if (brand.nrdc_pfas_rating === "D")  return { score: 38, source: SOURCES.NRDC_PFAS.name, sourceUrl: SOURCES.NRDC_PFAS.url, label: `${name} earned D on PFAS elimination (NRDC 2023)` };
+  if (brand.nrdc_pfas_rating === "F")  return { score: 28, source: SOURCES.NRDC_PFAS.name, sourceUrl: SOURCES.NRDC_PFAS.url, label: `${name} received F on PFAS elimination policy (NRDC 2023)` };
 
-  if (brand.good_on_you_rating === "we avoid") return { score: 22, source: SOURCES.GOOD_ON_YOU.name, sourceUrl: SOURCES.GOOD_ON_YOU.url, label: `${name} rated 'We Avoid' by Good On You` };
-  if (brand.good_on_you_rating === "great") return { score: 82, source: SOURCES.GOOD_ON_YOU.name, sourceUrl: SOURCES.GOOD_ON_YOU.url, label: `${name} rated 'Great' by Good On You` };
-  if (brand.good_on_you_rating === "good") return { score: 72, source: SOURCES.GOOD_ON_YOU.name, sourceUrl: SOURCES.GOOD_ON_YOU.url, label: `${name} rated 'Good' by Good On You` };
+  if (brand.good_on_you_rating === "we avoid")    return { score: 22, source: SOURCES.GOOD_ON_YOU.name, sourceUrl: SOURCES.GOOD_ON_YOU.url, label: `${name} rated 'We Avoid' by Good On You` };
+  if (brand.good_on_you_rating === "great")        return { score: 82, source: SOURCES.GOOD_ON_YOU.name, sourceUrl: SOURCES.GOOD_ON_YOU.url, label: `${name} rated 'Great' by Good On You` };
+  if (brand.good_on_you_rating === "good")         return { score: 72, source: SOURCES.GOOD_ON_YOU.name, sourceUrl: SOURCES.GOOD_ON_YOU.url, label: `${name} rated 'Good' by Good On You` };
   if (brand.good_on_you_rating === "it's a start") return { score: 48, source: SOURCES.GOOD_ON_YOU.name, sourceUrl: SOURCES.GOOD_ON_YOU.url, label: `${name} rated 'It's a Start' by Good On You` };
 
-  if (brand.oeko_tex_certified) return { score: 78, source: SOURCES.OEKO_TEX.name, sourceUrl: SOURCES.OEKO_TEX.url, label: `${name} holds OEKO-TEX certification` };
-  if (brand.gots_certified) return { score: 80, source: "GOTS Certification", sourceUrl: "https://global-standard.org", label: `${name} holds GOTS certification` };
-  if (brand.bluesign_certified) return { score: 75, source: "bluesign Certification", sourceUrl: "https://www.bluesign.com", label: `${name} holds bluesign certification` };
+  if (brand.oeko_tex_certified)  return { score: 78, source: SOURCES.OEKO_TEX.name,                 sourceUrl: SOURCES.OEKO_TEX.url,                  label: `${name} holds OEKO-TEX certification` };
+  if (brand.gots_certified)      return { score: 80, source: "GOTS Certification",                  sourceUrl: "https://global-standard.org",          label: `${name} holds GOTS certification` };
+  if (brand.bluesign_certified)  return { score: 75, source: "bluesign Certification",              sourceUrl: "https://www.bluesign.com",             label: `${name} holds bluesign certification` };
 
-  return { score: 50, source: "General brand profile", sourceUrl: null, label: `${name} — no specific safety rating on record` };
-}
-
-// ── Category Research Benchmarks ─────────────────────────────
-function getCategoryResearch(category, materials) {
-  const cat = (category || "").toLowerCase();
-  const mat = (materials || "").toLowerCase();
-
-  if (cat.includes("activewear") || cat.includes("athletic") || cat.includes("legging") || cat.includes("sports bra") || cat.includes("yoga") || cat.includes("gym") || cat.includes("compression")) {
-    return {
-      riskScore: 35,
-      study: SOURCES.MAMAVATION_2022.name,
-      url: SOURCES.MAMAVATION_2022.url,
-      finding: "Activewear polyester products tested positive for PFAS in 68% of items (10–284 ppm organic fluorine)"
-    };
-  }
-  if (cat.includes("jacket") || cat.includes("waterproof") || cat.includes("rain") || cat.includes("outdoor") || cat.includes("outerwear")) {
-    return {
-      riskScore: 30,
-      study: "Toxic-Free Future (2022)",
-      url: "https://toxicfreefuture.org",
-      finding: "Waterproof/DWR outdoor apparel showed PFAS presence in 58% of items tested"
-    };
-  }
-  if (cat.includes("dress shirt") || cat.includes("formal") || cat.includes("wrinkle") || cat.includes("non-iron") || cat.includes("office")) {
-    return {
-      riskScore: 45,
-      study: SOURCES.EWG_2022.name,
-      url: SOURCES.EWG_2022.url,
-      finding: "Wrinkle-resistant fabric treatments commonly use formaldehyde-releasing agents"
-    };
-  }
-  if (cat.includes("sleepwear") || cat.includes("pajama") || cat.includes("sleep") || cat.includes("lounge")) {
-    return {
-      riskScore: 50,
-      study: SOURCES.EWG_2022.name,
-      url: SOURCES.EWG_2022.url,
-      finding: "Sleepwear with prolonged skin contact increases cumulative dermal chemical exposure"
-    };
-  }
-  if (cat.includes("underwear") || cat.includes("bra") || cat.includes("intimate") || cat.includes("boxer")) {
-    return {
-      riskScore: 40,
-      study: SOURCES.EWG_2022.name,
-      url: SOURCES.EWG_2022.url,
-      finding: "Intimate apparel with high skin contact and synthetic materials increases chemical transfer risk"
-    };
-  }
-  if (cat.includes("kids") || cat.includes("baby") || cat.includes("infant") || cat.includes("toddler") || cat.includes("children")) {
-    return {
-      riskScore: 38,
-      study: SOURCES.ZHENG_2025.name,
-      url: SOURCES.ZHENG_2025.url,
-      finding: "Children's textiles showed sweat-amplified PFAS dermal transfer up to 3,252x versus dry contact"
-    };
-  }
-  if (mat.includes("cotton") || mat.includes("organic") || mat.includes("linen") || mat.includes("hemp") || mat.includes("wool") || mat.includes("silk") || mat.includes("cashmere")) {
-    return {
-      riskScore: 70,
-      study: SOURCES.ECHA_REACH.name,
-      url: SOURCES.ECHA_REACH.url,
-      finding: "Natural fiber garments generally carry lower chemical finishing risk than synthetic performance fabrics"
-    };
-  }
-  if (mat.includes("viscose") || mat.includes("rayon") || mat.includes("modal") || mat.includes("bamboo") || mat.includes("tencel") || mat.includes("lyocell") || mat.includes("cupro")) {
-    return {
-      riskScore: 55,
-      study: SOURCES.ECHA_REACH.name,
-      url: SOURCES.ECHA_REACH.url,
-      finding: "Regenerated cellulose fibers (viscose, modal, bamboo) involve chemical processing but carry moderate residue risk"
-    };
-  }
-  if (mat.includes("polyester") || mat.includes("nylon") || mat.includes("acrylic") || mat.includes("spandex") || mat.includes("elastane")) {
-    return {
-      riskScore: 38,
-      study: SOURCES.MAMAVATION_2022.name,
-      url: SOURCES.MAMAVATION_2022.url,
-      finding: "Synthetic fabric products associated with elevated chemical residue risk in published testing"
-    };
-  }
+  // Should never reach here — hasBrandData gate in calculateScore prevents it
   return null;
 }

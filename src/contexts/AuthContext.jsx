@@ -118,6 +118,10 @@ export function AuthProvider({ children }) {
 
   const signInWithEmail = useCallback(async (email) => {
     if (!supabase) return { error: { message: "Supabase not configured" } };
+    // Send OTP code (6-digit). emailRedirectTo is kept as a fallback for
+    // installations that still use the link form, but the email template
+    // shows the code as primary — link prefetchers (Safe Links / Defender)
+    // can't consume a code, only a click.
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -127,13 +131,23 @@ export function AuthProvider({ children }) {
     return { error };
   }, []);
 
+  const verifyEmailOtp = useCallback(async (email, token) => {
+    if (!supabase) return { error: { message: "Supabase not configured" } };
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: "email",
+    });
+    return { data, error };
+  }, []);
+
   const signOut = useCallback(async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signInWithEmail, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signInWithEmail, verifyEmailOtp, signOut }}>
       {children}
     </AuthContext.Provider>
   );

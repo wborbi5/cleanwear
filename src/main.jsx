@@ -11,6 +11,14 @@ import './design/tokens.css'
 function resolveView() {
   const p = window.location.pathname;
   if (p === '/auth/callback') return 'auth-callback';
+  // Supabase falls back to Site URL when the redirect_to isn't allowlisted,
+  // dumping ?error=...#error=... at root. Route those to AuthCallback so the
+  // user sees the actual error instead of a confused landing page.
+  const hashParams = new URLSearchParams(window.location.hash.slice(1));
+  const queryParams = new URLSearchParams(window.location.search);
+  if (queryParams.get('error') || hashParams.get('error') || queryParams.get('code')) {
+    return 'auth-callback';
+  }
   if (p.startsWith('/s/')) return 'share';
   if (p === '/feed' || p === '/feed/') return 'feed';
   return window.location.hash === '#app' ? 'app' : 'landing';

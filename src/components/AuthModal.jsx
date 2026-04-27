@@ -1,27 +1,52 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext.jsx";
 
-const STATES = { IDLE: "idle", LOADING: "loading", SENT: "sent", ERROR: "error" };
+const STATES = {
+  IDLE: "idle",
+  SENDING: "sending",
+  CODE_INPUT: "code_input",
+  VERIFYING: "verifying",
+  ERROR: "error",
+};
 
 export default function AuthModal({ isOpen, onClose, onSuccess, trigger }) {
-  const { signInWithEmail } = useAuth();
+  const { signInWithEmail, verifyEmailOtp } = useAuth();
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [state, setState] = useState(STATES.IDLE);
   const [errorMsg, setErrorMsg] = useState("");
   const inputRef = useRef(null);
+  const codeRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
-      setState(STATES.IDLE);
-      setEmail("");
-      setErrorMsg("");
+      // Restore pending email if user requested a code earlier and reopened
+      // the modal — codes are valid 1 hour, no point making them re-request.
+      const pendingEmail = sessionStorage.getItem("cw_auth_pending_email") || "";
+      if (pendingEmail) {
+        setEmail(pendingEmail);
+        setCode("");
+        setErrorMsg("");
+        setState(STATES.CODE_INPUT);
+      } else {
+        setState(STATES.IDLE);
+        setEmail("");
+        setCode("");
+        setErrorMsg("");
+      }
       window.posthog?.capture("auth_prompted", { trigger });
-      setTimeout(() => inputRef.current?.focus(), 100);
+      setTimeout(() => (pendingEmail ? codeRef : inputRef).current?.focus(), 100);
     }
   }, [isOpen, trigger]);
 
+  useEffect(() => {
+    if (state === STATES.CODE_INPUT) {
+      setTimeout(() => codeRef.current?.focus(), 50);
+    }
+  }, [state]);
+
   const handleClose = () => {
-    if (state !== STATES.SENT) {
+    if (state !== STATES.CODE_INPUT && state !== STATES.VERIFYING) {
       window.posthog?.capture("auth_dismissed", { trigger });
     }
     onClose();
@@ -29,9 +54,10 @@ export default function AuthModal({ isOpen, onClose, onSuccess, trigger }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email.trim() || state === STATES.LOADING) return;
+    if (!email.trim() || state === STATES.SENDING) return;
 
-    setState(STATES.LOADING);
+    setState(STATES.SENDING);
+    setErrorMsg("");
     const { error } = await signInWithEmail(email.trim());
     if (error) {
       const msg = error.message || "Something went wrong";
@@ -42,9 +68,54 @@ export default function AuthModal({ isOpen, onClose, onSuccess, trigger }) {
       }
       setState(STATES.ERROR);
     } else {
-      setState(STATES.SENT);
-      onSuccess?.();
+      sessionStorage.setItem("cw_auth_pending_email", email.trim());
+      setState(STATES.CODE_INPUT);
     }
+  };
+
+  const handleVerifyCode = async (e) => {
+    e.preventDefault();
+    const trimmed = code.trim();
+    if (trimmed.length < 6 || state === STATES.VERIFYING) return;
+
+    setState(STATES.VERIFYING);
+    setErrorMsg("");
+    const { error } = await verifyEmailOtp(email.trim(), trimmed);
+    if (error) {
+      const msg = error.message || "Invalid or expired code";
+      setErrorMsg(msg.toLowerCase().includes("expired") || msg.toLowerCase().includes("invalid")
+        ? "That code is invalid or expired. Check the latest email or request a new one."
+        : msg);
+      setState(STATES.ERROR);
+    } else {
+      sessionStorage.removeItem("cw_auth_pending_email");
+      window.posthog?.capture("auth_completed", { trigger, method: "otp_code" });
+      onSuccess?.();
+      onClose();
+    }
+  };
+
+  const handleResend = async () => {
+    setCode("");
+    setErrorMsg("");
+    setState(STATES.SENDING);
+    const { error } = await signInWithEmail(email.trim());
+    if (error) {
+      setErrorMsg(error.message || "Couldn't resend. Try again.");
+      setState(STATES.ERROR);
+    } else {
+      sessionStorage.setItem("cw_auth_pending_email", email.trim());
+      setState(STATES.CODE_INPUT);
+    }
+  };
+
+  const handleUseDifferentEmail = () => {
+    sessionStorage.removeItem("cw_auth_pending_email");
+    setEmail("");
+    setCode("");
+    setErrorMsg("");
+    setState(STATES.IDLE);
+    setTimeout(() => inputRef.current?.focus(), 50);
   };
 
   if (!isOpen) return null;
@@ -91,27 +162,99 @@ export default function AuthModal({ isOpen, onClose, onSuccess, trigger }) {
           </span>
         </div>
 
-        {state === STATES.SENT ? (
-          /* ── SENT STATE ── */
-          <div style={{ textAlign: "center", padding: "16px 0 8px" }}>
-            <div style={{
-              width: 56, height: 56, borderRadius: "50%", background: "rgba(74,222,128,0.1)",
-              border: "2px solid #4ade80", display: "flex", alignItems: "center",
-              justifyContent: "center", margin: "0 auto 20px", fontSize: 24,
+        {state === STATES.CODE_INPUT || (state === STATES.ERROR && code) || state === STATES.VERIFYING ? (
+          /* ── CODE INPUT STATE ── */
+          <>
+            <h3 style={{
+              color: "#fff", fontSize: 20, fontFamily: "Georgia,serif",
+              fontWeight: 700, margin: "0 0 8px", textAlign: "center",
             }}>
-              &#x2713;
-            </div>
-            <h3 style={{ color: "#fff", fontSize: 20, fontFamily: "Georgia,serif", margin: "0 0 8px" }}>
-              Check your email
+              Enter your code
             </h3>
-            <p style={{ color: "#9ca3af", fontSize: 14, margin: "0 0 8px", lineHeight: 1.5 }}>
-              We sent a sign-in link to{" "}
+            <p style={{
+              color: "#9ca3af", fontSize: 13, textAlign: "center",
+              margin: "0 0 24px", lineHeight: 1.5,
+            }}>
+              We sent a 6-digit code to{" "}
               <span style={{ color: "#4ade80", fontWeight: 600 }}>{email}</span>
             </p>
-            <p style={{ color: "#6b7280", fontSize: 12, margin: 0 }}>
-              Link expires in 1 hour
-            </p>
-          </div>
+
+            <form onSubmit={handleVerifyCode}>
+              <input
+                ref={codeRef}
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]*"
+                value={code}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+                  setCode(v);
+                  if (state === STATES.ERROR) setState(STATES.CODE_INPUT);
+                }}
+                placeholder="123456"
+                maxLength={6}
+                style={{
+                  width: "100%", boxSizing: "border-box", padding: "14px 16px",
+                  background: "#1a2a1a", border: "1px solid #2d3d2d", borderRadius: 10,
+                  color: "#fff", fontSize: 22, letterSpacing: "0.5em", textAlign: "center",
+                  fontWeight: 700, outline: "none",
+                  fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif",
+                  marginBottom: state === STATES.ERROR ? 8 : 16,
+                  transition: "border-color .2s",
+                }}
+                onFocus={(e) => e.target.style.borderColor = "#166534"}
+                onBlur={(e) => e.target.style.borderColor = "#2d3d2d"}
+              />
+
+              {state === STATES.ERROR && (
+                <p style={{ color: "#f87171", fontSize: 13, margin: "0 0 12px", paddingLeft: 4 }}>
+                  {errorMsg}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={code.length < 6 || state === STATES.VERIFYING}
+                style={{
+                  width: "100%", padding: "14px", background: "#166534",
+                  border: "none", borderRadius: 10, color: "#fff", fontSize: 15,
+                  fontWeight: 700,
+                  cursor: state === STATES.VERIFYING ? "wait" : (code.length < 6 ? "not-allowed" : "pointer"),
+                  opacity: state === STATES.VERIFYING ? 0.7 : (code.length < 6 ? 0.5 : 1),
+                  fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif",
+                  transition: "opacity .2s",
+                }}
+              >
+                {state === STATES.VERIFYING ? "Verifying..." : "Verify code"}
+              </button>
+            </form>
+
+            <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 16 }}>
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={state === STATES.SENDING || state === STATES.VERIFYING}
+                style={{
+                  background: "none", border: "none", color: "#6b7280", fontSize: 12,
+                  cursor: "pointer", fontFamily: "inherit", textDecoration: "underline",
+                }}
+              >
+                Resend code
+              </button>
+              <button
+                type="button"
+                onClick={handleUseDifferentEmail}
+                disabled={state === STATES.VERIFYING}
+                style={{
+                  background: "none", border: "none", color: "#6b7280", fontSize: 12,
+                  cursor: "pointer", fontFamily: "inherit", textDecoration: "underline",
+                }}
+              >
+                Use different email
+              </button>
+            </div>
+          </>
         ) : (
           /* ── FORM STATE ── */
           <>
@@ -125,7 +268,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, trigger }) {
               color: "#9ca3af", fontSize: 13, textAlign: "center",
               margin: "0 0 24px", lineHeight: 1.5,
             }}>
-              Enter your email &mdash; we'll send you a secure link. No password needed.
+              Enter your email &mdash; we'll send you a 6-digit code. No password needed.
             </p>
 
             <form onSubmit={handleSubmit}>
@@ -148,7 +291,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, trigger }) {
                 onBlur={(e) => e.target.style.borderColor = "#2d3d2d"}
               />
 
-              {state === STATES.ERROR && (
+              {state === STATES.ERROR && !code && (
                 <p style={{ color: "#f87171", fontSize: 13, margin: "0 0 12px", paddingLeft: 4 }}>
                   {errorMsg}
                 </p>
@@ -156,17 +299,17 @@ export default function AuthModal({ isOpen, onClose, onSuccess, trigger }) {
 
               <button
                 type="submit"
-                disabled={state === STATES.LOADING}
+                disabled={state === STATES.SENDING}
                 style={{
                   width: "100%", padding: "14px", background: "#166534",
                   border: "none", borderRadius: 10, color: "#fff", fontSize: 15,
-                  fontWeight: 700, cursor: state === STATES.LOADING ? "wait" : "pointer",
-                  opacity: state === STATES.LOADING ? 0.7 : 1,
+                  fontWeight: 700, cursor: state === STATES.SENDING ? "wait" : "pointer",
+                  opacity: state === STATES.SENDING ? 0.7 : 1,
                   fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif",
                   transition: "opacity .2s",
                 }}
               >
-                {state === STATES.LOADING ? "Sending..." : "Send me a sign-in link"}
+                {state === STATES.SENDING ? "Sending..." : "Email me a code"}
               </button>
             </form>
           </>
@@ -186,25 +329,44 @@ export default function AuthModal({ isOpen, onClose, onSuccess, trigger }) {
  * Used when an anonymous user visits /wardrobe directly.
  */
 export function InlineSignIn() {
-  const { signInWithEmail } = useAuth();
+  const { signInWithEmail, verifyEmailOtp } = useAuth();
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [state, setState] = useState(STATES.IDLE);
   const [errorMsg, setErrorMsg] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email.trim() || state === STATES.LOADING) return;
-    setState(STATES.LOADING);
-
-    // Store that user wants wardrobe after auth
-    sessionStorage.setItem("pendingRoute", "#app");
+    if (!email.trim() || state === STATES.SENDING) return;
+    setState(STATES.SENDING);
+    setErrorMsg("");
 
     const { error } = await signInWithEmail(email.trim());
     if (error) {
       setErrorMsg(error.message || "Something went wrong");
       setState(STATES.ERROR);
     } else {
-      setState(STATES.SENT);
+      setState(STATES.CODE_INPUT);
+    }
+  };
+
+  const handleVerifyCode = async (e) => {
+    e.preventDefault();
+    const trimmed = code.trim();
+    if (trimmed.length < 6 || state === STATES.VERIFYING) return;
+
+    setState(STATES.VERIFYING);
+    setErrorMsg("");
+    const { error } = await verifyEmailOtp(email.trim(), trimmed);
+    if (error) {
+      const msg = error.message || "Invalid or expired code";
+      setErrorMsg(msg.toLowerCase().includes("expired") || msg.toLowerCase().includes("invalid")
+        ? "That code is invalid or expired. Check the latest email or request a new one."
+        : msg);
+      setState(STATES.ERROR);
+    } else {
+      window.posthog?.capture("auth_completed", { trigger: "wardrobe_view", method: "otp_code" });
+      // AuthContext picks up the session; component re-renders with logged-in state.
     }
   };
 
@@ -212,28 +374,57 @@ export function InlineSignIn() {
     window.posthog?.capture("auth_prompted", { trigger: "wardrobe_view" });
   }, []);
 
+  const showingCode = state === STATES.CODE_INPUT || state === STATES.VERIFYING || (state === STATES.ERROR && code);
+
   return (
     <div style={{
       maxWidth: 380, margin: "60px auto", textAlign: "center", padding: "40px 24px",
       background: "var(--s1,#0f1a0f)", borderRadius: 20, border: "1px solid var(--bd,#1a2a1a)",
       fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif",
     }}>
-      {state === STATES.SENT ? (
+      {showingCode ? (
         <>
-          <div style={{
-            width: 56, height: 56, borderRadius: "50%", background: "rgba(74,222,128,0.1)",
-            border: "2px solid #4ade80", display: "flex", alignItems: "center",
-            justifyContent: "center", margin: "0 auto 20px", fontSize: 24, color: "#4ade80",
-          }}>
-            &#x2713;
-          </div>
-          <h3 style={{ color: "#fff", fontFamily: "Georgia,serif", fontSize: 18, margin: "0 0 8px" }}>
-            Check your email
+          <h3 style={{ color: "#fff", fontFamily: "Georgia,serif", fontSize: 20, margin: "0 0 8px" }}>
+            Enter your code
           </h3>
-          <p style={{ color: "#9ca3af", fontSize: 13, margin: 0, lineHeight: 1.5 }}>
-            We sent a sign-in link to <span style={{ color: "#4ade80" }}>{email}</span>
+          <p style={{ color: "#9ca3af", fontSize: 13, margin: "0 0 24px", lineHeight: 1.5 }}>
+            We sent a 6-digit code to <span style={{ color: "#4ade80" }}>{email}</span>
           </p>
-          <p style={{ color: "#6b7280", fontSize: 12, marginTop: 8 }}>Link expires in 1 hour</p>
+          <form onSubmit={handleVerifyCode}>
+            <input
+              type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*"
+              value={code}
+              onChange={(e) => {
+                const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+                setCode(v);
+                if (state === STATES.ERROR) setState(STATES.CODE_INPUT);
+              }}
+              placeholder="123456" maxLength={6}
+              style={{
+                width: "100%", boxSizing: "border-box", padding: "14px 16px",
+                background: "#1a2a1a", border: "1px solid #2d3d2d", borderRadius: 10,
+                color: "#fff", fontSize: 22, letterSpacing: "0.5em", textAlign: "center",
+                fontWeight: 700, outline: "none", marginBottom: state === STATES.ERROR ? 8 : 16,
+                fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif",
+              }}
+            />
+            {state === STATES.ERROR && (
+              <p style={{ color: "#f87171", fontSize: 13, margin: "0 0 12px" }}>{errorMsg}</p>
+            )}
+            <button
+              type="submit"
+              disabled={code.length < 6 || state === STATES.VERIFYING}
+              style={{
+                width: "100%", padding: "14px", background: "#166534", border: "none",
+                borderRadius: 10, color: "#fff", fontSize: 15, fontWeight: 700,
+                cursor: state === STATES.VERIFYING ? "wait" : (code.length < 6 ? "not-allowed" : "pointer"),
+                opacity: state === STATES.VERIFYING ? 0.7 : (code.length < 6 ? 0.5 : 1),
+                fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif",
+              }}
+            >
+              {state === STATES.VERIFYING ? "Verifying..." : "Verify code"}
+            </button>
+          </form>
         </>
       ) : (
         <>
@@ -259,14 +450,14 @@ export function InlineSignIn() {
             {state === STATES.ERROR && (
               <p style={{ color: "#f87171", fontSize: 13, margin: "0 0 12px" }}>{errorMsg}</p>
             )}
-            <button type="submit" disabled={state === STATES.LOADING} style={{
+            <button type="submit" disabled={state === STATES.SENDING} style={{
               width: "100%", padding: "14px", background: "#166534", border: "none",
               borderRadius: 10, color: "#fff", fontSize: 15, fontWeight: 700,
-              cursor: state === STATES.LOADING ? "wait" : "pointer",
-              opacity: state === STATES.LOADING ? 0.7 : 1,
+              cursor: state === STATES.SENDING ? "wait" : "pointer",
+              opacity: state === STATES.SENDING ? 0.7 : 1,
               fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif",
             }}>
-              {state === STATES.LOADING ? "Sending..." : "Send me a sign-in link"}
+              {state === STATES.SENDING ? "Sending..." : "Email me a code"}
             </button>
           </form>
         </>

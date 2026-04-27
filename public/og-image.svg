@@ -38,7 +38,7 @@
   <!-- CTA pill -->
   <g transform="translate(80,540)">
     <rect x="0" y="0" width="260" height="52" rx="26" fill="#16a34a"/>
-    <text x="130" y="33" text-anchor="middle" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="18" font-weight="700" fill="#ffffff">cleanwear.app</text>
+    <text x="130" y="33" text-anchor="middle" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="18" font-weight="700" fill="#ffffff">cleanwear.org</text>
   </g>
 
   <!-- Score badge mock -->

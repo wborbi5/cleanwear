@@ -122,7 +122,7 @@ function CardContent({ result, score }) {
             display: "inline-block",
           }}>
             <span style={{ fontSize: 22, color: "#4ade80", fontWeight: 700 }}>
-              Scan yours at cleanwear.app
+              Scan yours at cleanwear.org
             </span>
           </div>
         </div>
@@ -312,7 +312,7 @@ function ShareModal({ isOpen, onClose, cardRef, result, score, onShareComplete, 
 
   if (!isOpen) return null;
 
-  const shareText = `My ${result?.brand || ""} ${result?.product_name || "item"} scored ${score?.overall}/100 on CleanWear — a chemical-safety score built from published research. Scan yours at https://cleanwear.app`.replace(/\s+/g," ").trim();
+  const shareText = `My ${result?.brand || ""} ${result?.product_name || "item"} scored ${score?.overall}/100 on CleanWear — a chemical-safety score built from published research. Scan yours at https://cleanwear.org`.replace(/\s+/g," ").trim();
 
   const handleCopyLink = () => {
     navigator.clipboard?.writeText(shareText).then(() => {
@@ -488,7 +488,7 @@ export default function ShareCard({ result, score, isOpen, onClose, onShareCompl
   }, [isOpen]);
 
   const handleShare = async () => {
-    const shareText = `My ${result?.brand || ""} ${result?.product_name || "item"} scored ${score?.overall}/100 on CleanWear — a chemical-safety score built from published research. Scan yours at https://cleanwear.app`.replace(/\s+/g," ").trim();
+    const shareText = `My ${result?.brand || ""} ${result?.product_name || "item"} scored ${score?.overall}/100 on CleanWear — a chemical-safety score built from published research. Scan yours at https://cleanwear.org`.replace(/\s+/g," ").trim();
 
     // Try native share on mobile
     if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) {
@@ -502,7 +502,7 @@ export default function ShareCard({ result, score, isOpen, onClose, onShareCompl
             await navigator.share({
               title: `CleanWear: ${result?.product_name} scored ${score?.overall}/100`,
               text: shareText,
-              url: "https://cleanwear.app",
+              url: "https://cleanwear.org",
               files: [file],
             });
             onShareComplete?.();
@@ -513,7 +513,7 @@ export default function ShareCard({ result, score, isOpen, onClose, onShareCompl
         await navigator.share({
           title: `CleanWear: ${result?.product_name} scored ${score?.overall}/100`,
           text: shareText,
-          url: "https://cleanwear.app",
+          url: "https://cleanwear.org",
         });
         onShareComplete?.();
         onClose?.();

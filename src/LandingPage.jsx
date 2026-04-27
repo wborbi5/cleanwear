@@ -622,7 +622,7 @@ export default function LandingPage({ onLaunchApp }) {
               <p style={{ fontSize: 16, color: "#555", lineHeight: 1.7, margin: 0, maxWidth: 380 }}>
                 Three weighted components. All from cited sources. No AI guessing, no made-up numbers. When a brand has no published record, the brand component drops out and the other two carry the score.
               </p>
-              <a href="mailto:hello@cleanwear.app" style={{
+              <a href="mailto:hello@cleanwear.org" style={{
                 display: "inline-block", marginTop: 24,
                 fontSize: 14, fontWeight: 700, color: "#16a34a", textDecoration: "none",
                 borderBottom: "2px solid #16a34a", paddingBottom: 2,
@@ -1136,7 +1136,7 @@ export default function LandingPage({ onLaunchApp }) {
             </div>
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#5a7d5a", marginBottom: 12 }}>Project</div>
-              <a href="mailto:hello@cleanwear.app" style={{ fontSize: 14, color: "#8aab8a", textDecoration: "none", display: "block", marginBottom: 8 }}>Contact</a>
+              <a href="mailto:hello@cleanwear.org" style={{ fontSize: 14, color: "#8aab8a", textDecoration: "none", display: "block", marginBottom: 8 }}>Contact</a>
               <a href="#methodology" style={{ fontSize: 14, color: "#8aab8a", textDecoration: "none", display: "block" }}>Methodology</a>
             </div>
           </div>

@@ -61,7 +61,7 @@ export default async function handler(req, res) {
     try {
       const upcRes = await fetch(
         `https://api.upcitemdb.com/prod/trial/lookup?upc=${q}`,
-        { headers: { 'Accept': 'application/json', 'User-Agent': 'CleanWear/1.0 (cleanwear.app)' } }
+        { headers: { 'Accept': 'application/json', 'User-Agent': 'CleanWear/1.0 (cleanwear.org)' } }
       )
       if (upcRes.ok) {
         const upcData = await upcRes.json()
@@ -83,7 +83,7 @@ export default async function handler(req, res) {
       try {
         const opfRes = await fetch(
           `https://world.openproductsfacts.org/api/v3/product/${q}.json`,
-          { headers: { 'User-Agent': 'CleanWear/1.0 (cleanwear.app)' } }
+          { headers: { 'User-Agent': 'CleanWear/1.0 (cleanwear.org)' } }
         )
         if (opfRes.ok) {
           const opfData = await opfRes.json()
@@ -109,7 +109,7 @@ export default async function handler(req, res) {
       try {
         const offRes = await fetch(
           `https://world.openfoodfacts.org/api/v2/product/${q}.json`,
-          { headers: { 'User-Agent': 'CleanWear/1.0 (cleanwear.app)' } }
+          { headers: { 'User-Agent': 'CleanWear/1.0 (cleanwear.org)' } }
         )
         if (offRes.ok) {
           const offData = await offRes.json()

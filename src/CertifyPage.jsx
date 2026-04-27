@@ -73,7 +73,7 @@ export default function CertifyPage({ onBack }) {
         sku_count: form.sku_count,
       });
     } catch (err) {
-      setError("Submission failed. Please try again or email certify@cleanwear.app.");
+      setError("Submission failed. Please try again or email certify@cleanwear.org.");
     } finally {
       setSubmitting(false);
     }
@@ -220,7 +220,7 @@ export default function CertifyPage({ onBack }) {
 
           <p style={styles.disclaimer}>
             Certification fees vary by tier and SKU count. We'll provide a detailed quote after reviewing your application.
-            Questions? Email certify@cleanwear.app.
+            Questions? Email certify@cleanwear.org.
           </p>
         </form>
       </div>

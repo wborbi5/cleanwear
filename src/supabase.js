@@ -2,13 +2,13 @@ import { createClient } from '@supabase/supabase-js'
 
 // ============================================================
 // SETUP REQUIRED in Supabase Dashboard (Authentication > URL Configuration):
-//   Site URL: https://cleanwear.app
+//   Site URL: https://cleanwear.org
 //   Redirect URLs (allowlist) — add ALL of these:
-//     https://cleanwear.app/auth/callback
+//     https://cleanwear.org/auth/callback
 //     https://cleanwear-app.vercel.app/auth/callback
 //     http://localhost:5173/auth/callback
-// Email Templates > Magic Link must use {{ .ConfirmationURL }}
-// (NOT {{ .Token }}). Otherwise the redirect won't carry the code.
+// Email Templates > Magic Link uses {{ .Token }} for the 6-digit OTP code.
+// (No clickable link — defeats Microsoft Safe Links / Defender prefetch.)
 // ============================================================
 
 // These are public keys — safe to expose in client code

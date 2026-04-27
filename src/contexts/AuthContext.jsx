@@ -133,12 +133,21 @@ export function AuthProvider({ children }) {
 
   const verifyEmailOtp = useCallback(async (email, token) => {
     if (!supabase) return { error: { message: "Supabase not configured" } };
-    const { data, error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: "email",
-    });
-    return { data, error };
+    // signInWithOtp generates different token types depending on user state:
+    //   - Existing user                    -> recovery_token     -> type 'magiclink'
+    //   - New user (shouldCreateUser=true) -> confirmation_token -> type 'signup' / 'email'
+    // verifyOtp({ type }) is strict about which token_type it matches.
+    // Wrong-type attempts return "invalid or expired" without consuming the
+    // real token, so we fire the two common types in parallel and take the
+    // first non-error result. Single verify is ~3s; parallel keeps total
+    // latency at ~3s instead of 6s sequential.
+    const attempts = await Promise.all([
+      supabase.auth.verifyOtp({ email, token, type: "email" }),
+      supabase.auth.verifyOtp({ email, token, type: "magiclink" }),
+    ]);
+    const success = attempts.find((a) => !a.error);
+    if (success) return { data: success.data, error: null };
+    return { data: null, error: attempts[0].error };
   }, []);
 
   const signOut = useCallback(async () => {

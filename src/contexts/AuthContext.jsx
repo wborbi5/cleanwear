@@ -133,21 +133,28 @@ export function AuthProvider({ children }) {
 
   const verifyEmailOtp = useCallback(async (email, token) => {
     if (!supabase) return { error: { message: "Supabase not configured" } };
-    // signInWithOtp generates different token types depending on user state:
-    //   - Existing user                    -> recovery_token     -> type 'magiclink'
-    //   - New user (shouldCreateUser=true) -> confirmation_token -> type 'signup' / 'email'
-    // verifyOtp({ type }) is strict about which token_type it matches.
-    // Wrong-type attempts return "invalid or expired" without consuming the
-    // real token, so we fire the two common types in parallel and take the
-    // first non-error result. Single verify is ~3s; parallel keeps total
-    // latency at ~3s instead of 6s sequential.
-    const attempts = await Promise.all([
-      supabase.auth.verifyOtp({ email, token, type: "email" }),
-      supabase.auth.verifyOtp({ email, token, type: "magiclink" }),
-    ]);
-    const success = attempts.find((a) => !a.error);
-    if (success) return { data: success.data, error: null };
-    return { data: null, error: attempts[0].error };
+    // signInWithOtp emits different token_types depending on the user state
+    // and which Supabase version is running. We try the common 4 sequentially
+    // (parallel was racing on token consumption — server returned 403 even
+    // when the matching type was tried). Wrong-type attempts return
+    // "invalid or expired" without consuming the real token, so this is safe.
+    //
+    //   recovery_token       (existing user passwordless)  -> 'magiclink'
+    //   recovery_token       (password reset)              -> 'recovery'
+    //   confirmation_token   (new signup confirm)          -> 'signup'
+    //   any                  (unified email-OTP, v2.43+)   -> 'email'
+    const types = ["magiclink", "email", "recovery", "signup"];
+    let lastResult = null;
+    for (const type of types) {
+      const result = await supabase.auth.verifyOtp({ email, token, type });
+      if (!result.error) return { data: result.data, error: null };
+      lastResult = result;
+      const msg = (result.error.message || "").toLowerCase();
+      // Bail early on errors that aren't a type-mismatch, so we don't waste
+      // 4x latency on rate limits or network errors.
+      if (msg.includes("rate") || msg.includes("network") || msg.includes("user not found")) break;
+    }
+    return { data: null, error: lastResult?.error };
   }, []);
 
   const signOut = useCallback(async () => {

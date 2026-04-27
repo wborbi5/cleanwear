@@ -191,7 +191,7 @@ function ScanDemo() {
 
             {/* Chemical tags */}
             <div style={{ display: "flex", gap: 5, flexWrap: "wrap", justifyContent: "center", marginBottom: 16 }}>
-              {["PFAS", "Antimony", "Microplastics"].map((c) => (
+              {["PFAS", "Phthalates", "Azo Dyes"].map((c) => (
                 <span key={c} style={{
                   padding: "3px 9px", background: "#fef2f2", borderRadius: 5,
                   fontSize: 11, color: "#b91c1c", fontWeight: 600,
@@ -620,7 +620,7 @@ export default function LandingPage({ onLaunchApp }) {
                 How we<br/>build a score.
               </h2>
               <p style={{ fontSize: 16, color: "#555", lineHeight: 1.7, margin: 0, maxWidth: 380 }}>
-                Three weighted components. All from cited sources. No AI guessing, no made-up numbers.
+                Three weighted components. All from cited sources. No AI guessing, no made-up numbers. When a brand has no published record, the brand component drops out and the other two carry the score.
               </p>
               <a href="mailto:hello@cleanwear.app" style={{
                 display: "inline-block", marginTop: 24,
@@ -634,23 +634,24 @@ export default function LandingPage({ onLaunchApp }) {
                 {
                   num: "01",
                   weight: "45%",
-                  title: "Material chemical risk",
-                  source: "EU REACH Annex XVII · 12 inference rules",
-                  desc: "We apply 12 inference rules to declared materials and finish treatments — mapping fiber types and chemical finish claims to regulated chemical categories.",
+                  title: "Brand safety record",
+                  source: "NRDC PFAS · Good On You · OEKO-TEX · GOTS · bluesign",
+                  desc: "When a brand has a cited safety record — an NRDC PFAS grade, a Good On You rating, or a third-party certification — it gets the heaviest weight. A brand earning an A on the NRDC scorecard outranks marketing claims. When no public record exists, this component drops out entirely.",
+                  note: "Conditional",
                 },
                 {
                   num: "02",
                   weight: "35%",
-                  title: "Brand safety record",
-                  source: "NRDC · OEKO-TEX · GOTS · Good On You",
-                  desc: "Scores pull from independent brand rating databases. A brand that earned an A on the NRDC PFAS scorecard outranks one with no public policy — regardless of marketing claims.",
+                  title: "Material composition",
+                  source: "Mamavation 2022 · ECHA REACH Annex XVII",
+                  desc: "We parse declared fiber percentages — \"81% nylon, 19% spandex\" — and map them to chemical residue risk tiers from peer-reviewed activewear testing. Synthetic-heavy fabrics score lower; certified organic and natural fibers score higher.",
                 },
                 {
                   num: "03",
                   weight: "20%",
-                  title: "Category research benchmarks",
-                  source: "Mamavation · EWG · Zheng et al. 2025",
-                  desc: "Published testing data for specific garment types. Activewear tested at 68% positive for PFAS. Children's textiles show elevated chemical transfer risk in published studies.",
+                  title: "Regulatory flags",
+                  source: "EU REACH Annex XVII · OEKO-TEX Standard 100",
+                  desc: "Material and category trigger flags for regulated chemical classes — phthalates in polyester/nylon, PFAS in activewear and waterproof gear, formaldehyde in non-iron dress fabrics, azo dyes in synthetic dyes.",
                 },
               ].map((step, i) => (
                 <div key={i} style={{
@@ -673,11 +674,19 @@ export default function LandingPage({ onLaunchApp }) {
                     </div>
                     <p style={{ fontSize: 14, color: "#666", lineHeight: 1.7, margin: 0 }}>{step.desc}</p>
                   </div>
-                  <div style={{
-                    fontSize: 13, fontWeight: 800, color: "#16a34a",
-                    background: "#e8f5e4", padding: "6px 12px", borderRadius: 10,
-                    whiteSpace: "nowrap",
-                  }}>{step.weight}</div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                    <div style={{
+                      fontSize: 13, fontWeight: 800, color: "#16a34a",
+                      background: "#e8f5e4", padding: "6px 12px", borderRadius: 10,
+                      whiteSpace: "nowrap",
+                    }}>{step.weight}</div>
+                    {step.note && (
+                      <div style={{
+                        fontSize: 10, fontWeight: 700, color: "#888", letterSpacing: 1.5,
+                        textTransform: "uppercase",
+                      }}>{step.note}</div>
+                    )}
+                  </div>
                 </div>
               ))}
 
@@ -1043,7 +1052,7 @@ export default function LandingPage({ onLaunchApp }) {
                 <div style={{ fontSize: 11, color: "#16a34a", fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>02 · Peer-reviewed</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: "#0f1a0f", marginBottom: 6 }}>Every score traces to a source</div>
                 <p style={{ fontSize: 14, color: "#666", lineHeight: 1.6, margin: 0 }}>
-                  EU REACH, OEKO-TEX, NRDC, EWG, Zheng et al. 2025. We cite every study and link directly to it.
+                  EU REACH, OEKO-TEX, NRDC, Mamavation, EWG, Good On You, Zheng et al. 2025. We cite every study and link directly to it.
                 </p>
               </div>
             </div>

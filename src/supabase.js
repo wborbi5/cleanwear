@@ -95,7 +95,7 @@ export async function fetchWardrobe() {
       .from('wardrobe')
       .select('*')
       .eq('user_id', session.user.id)
-      .order('created_at', { ascending: false })
+      .order('added_at', { ascending: false })
     return { data: data || [], error }
   } catch (e) {
     console.warn('Fetch wardrobe failed:', e)

@@ -79,10 +79,18 @@ export default function AuthModal({ isOpen, onClose, onSuccess, trigger }) {
 
     if (error) return setErrorMsg(mapAuthError(error));
 
-    // signUp returns user but no session if email confirmation is required.
-    if (!data?.session && mode === "signup") {
-      setErrorMsg("Account created — check your email to confirm before signing in.");
-      return;
+    if (mode === "signup") {
+      // Supabase returns user + empty identities[] when the email already has
+      // a confirmed account (anti-enumeration). Distinguish that from genuine
+      // pending-confirmation (new user, "Confirm email" toggle is on).
+      if (Array.isArray(data?.user?.identities) && data.user.identities.length === 0) {
+        setErrorMsg("An account already exists for this email. Try signing in, or use \"Forgot password\" if you don't remember it.");
+        return;
+      }
+      if (!data?.session) {
+        setErrorMsg("Account created — check your email to confirm before signing in. (Or disable \"Confirm email\" in Supabase to skip this step.)");
+        return;
+      }
     }
 
     window.posthog?.capture("auth_completed", { trigger, method: mode === "signup" ? "signup_password" : "signin_password" });
@@ -334,9 +342,15 @@ export function InlineSignIn() {
     setLoading(false);
 
     if (error) return setErrorMsg(mapAuthError(error));
-    if (!data?.session && mode === "signup") {
-      setInfo("Account created — check your email to confirm before signing in.");
-      return;
+    if (mode === "signup") {
+      if (Array.isArray(data?.user?.identities) && data.user.identities.length === 0) {
+        setErrorMsg("An account already exists for this email. Try signing in, or use \"Forgot password\".");
+        return;
+      }
+      if (!data?.session) {
+        setInfo("Account created — check your email to confirm before signing in.");
+        return;
+      }
     }
     window.posthog?.capture("auth_completed", { trigger: "wardrobe_view", method: mode === "signup" ? "signup_password" : "signin_password" });
     // AuthContext picks up the session; component re-renders with logged-in state.

@@ -30,6 +30,14 @@ export default function AuthCallback() {
         const code = url.searchParams.get("code");
         const errParam = url.searchParams.get("error_description") || url.searchParams.get("error");
 
+        // Capture flow type BEFORE detectSessionInUrl strips the hash. Implicit-
+        // flow recovery emails land with #access_token=...&type=recovery, and
+        // PKCE recovery emails land with ?type=recovery&code=...
+        const hashParams = new URLSearchParams(window.location.hash.slice(1));
+        const isRecovery =
+          hashParams.get("type") === "recovery" ||
+          url.searchParams.get("type") === "recovery";
+
         if (errParam) {
           setError(decodeURIComponent(errParam));
           return;
@@ -78,7 +86,15 @@ export default function AuthCallback() {
           console.warn("Pending wardrobe save failed:", e);
         }
 
-        // Redirect into the app — strip query/hash so it's clean
+        // Recovery: send the user to the "set new password" screen before
+        // dropping them into the app, so they don't end up signed in but
+        // password-less and have to come back here to do it.
+        if (isRecovery) {
+          window.location.replace(window.location.origin + "/#reset-password");
+          return;
+        }
+
+        // Regular sign-in — redirect into the app — strip query/hash so it's clean
         const pendingRoute = sessionStorage.getItem("pendingRoute") || "#app";
         sessionStorage.removeItem("pendingRoute");
         window.location.replace(window.location.origin + "/" + pendingRoute);

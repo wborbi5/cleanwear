@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import CleanWearApp from './CleanWear.jsx'
 import LandingPage from './LandingPage.jsx'
 import AuthCallback from './pages/AuthCallback.jsx'
+import SetPasswordPage from './pages/SetPasswordPage.jsx'
 import SharePage from './pages/SharePage.jsx'
 import FeedPage from './pages/FeedPage.jsx'
 import { AuthProvider } from './contexts/AuthContext.jsx'
@@ -19,6 +20,7 @@ function resolveView() {
   if (queryParams.get('error') || hashParams.get('error') || queryParams.get('code')) {
     return 'auth-callback';
   }
+  if (window.location.hash === '#reset-password') return 'reset-password';
   if (p.startsWith('/s/')) return 'share';
   if (p === '/feed' || p === '/feed/') return 'feed';
   return window.location.hash === '#app' ? 'app' : 'landing';
@@ -38,6 +40,7 @@ function Root() {
   }, []);
 
   if (view === 'auth-callback') return <AuthCallback />;
+  if (view === 'reset-password') return <SetPasswordPage />;
   if (view === 'share') return <SharePage />;
   if (view === 'feed') return <FeedPage />;
   if (view === 'app') return <CleanWearApp />;

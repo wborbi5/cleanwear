@@ -18,7 +18,14 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_qc
 export const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey, {
       auth: {
-        flowType: 'pkce',
+        // Implicit flow — generates a verifiable 6-digit OTP token that
+        // verifyOtp({ type: 'email' }) can validate directly. PKCE flow
+        // would hash the token (pkce_<hash> in auth.one_time_tokens) and
+        // expect URL exchange via exchangeCodeForSession, which breaks
+        // our code-input UI. We're not using clickable magic links
+        // anyway (email scanners pre-fetch them and consume the token),
+        // so the PKCE-vs-implicit security tradeoff doesn't apply here.
+        flowType: 'implicit',
         detectSessionInUrl: true,
         autoRefreshToken: true,
         persistSession: true,

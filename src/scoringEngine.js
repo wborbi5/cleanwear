@@ -111,14 +111,18 @@ export function calculateScore(product, brand) {
   );
   if (hasBrandData) {
     const brandScore = getBrandScore(brand);
-    components.push({
-      type: "brand",
-      source: brandScore.source,
-      sourceUrl: brandScore.sourceUrl,
-      weight: 0.45,
-      score: brandScore.score,
-      label: brandScore.label
-    });
+    if (brandScore) {
+      components.push({
+        type: "brand",
+        source: brandScore.source,
+        sourceUrl: brandScore.sourceUrl,
+        weight: 0.45,
+        score: brandScore.score,
+        label: brandScore.label
+      });
+    } else {
+      gaps.push("No cited brand-level safety data on record");
+    }
   } else {
     gaps.push("No cited brand-level safety data on record");
   }

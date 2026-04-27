@@ -116,45 +116,28 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const signInWithEmail = useCallback(async (email) => {
+  const signInWithPassword = useCallback(async (email, password) => {
     if (!supabase) return { error: { message: "Supabase not configured" } };
-    // Send OTP code (6-digit). emailRedirectTo is kept as a fallback for
-    // installations that still use the link form, but the email template
-    // shows the code as primary — link prefetchers (Safe Links / Defender)
-    // can't consume a code, only a click.
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: window.location.origin + "/auth/callback",
-      },
-    });
-    return { error };
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    return { data, error };
   }, []);
 
-  const verifyEmailOtp = useCallback(async (email, token) => {
+  const signUpWithPassword = useCallback(async (email, password) => {
     if (!supabase) return { error: { message: "Supabase not configured" } };
-    // signInWithOtp emits different token_types depending on the user state
-    // and which Supabase version is running. We try the common 4 sequentially
-    // (parallel was racing on token consumption — server returned 403 even
-    // when the matching type was tried). Wrong-type attempts return
-    // "invalid or expired" without consuming the real token, so this is safe.
-    //
-    //   recovery_token       (existing user passwordless)  -> 'magiclink'
-    //   recovery_token       (password reset)              -> 'recovery'
-    //   confirmation_token   (new signup confirm)          -> 'signup'
-    //   any                  (unified email-OTP, v2.43+)   -> 'email'
-    const types = ["magiclink", "email", "recovery", "signup"];
-    let lastResult = null;
-    for (const type of types) {
-      const result = await supabase.auth.verifyOtp({ email, token, type });
-      if (!result.error) return { data: result.data, error: null };
-      lastResult = result;
-      const msg = (result.error.message || "").toLowerCase();
-      // Bail early on errors that aren't a type-mismatch, so we don't waste
-      // 4x latency on rate limits or network errors.
-      if (msg.includes("rate") || msg.includes("network") || msg.includes("user not found")) break;
-    }
-    return { data: null, error: lastResult?.error };
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: window.location.origin + "/auth/callback" },
+    });
+    return { data, error };
+  }, []);
+
+  const resetPasswordForEmail = useCallback(async (email) => {
+    if (!supabase) return { error: { message: "Supabase not configured" } };
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + "/auth/callback",
+    });
+    return { error };
   }, []);
 
   const signOut = useCallback(async () => {
@@ -163,7 +146,11 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signInWithEmail, verifyEmailOtp, signOut }}>
+    <AuthContext.Provider value={{
+      user, session, loading,
+      signInWithPassword, signUpWithPassword, resetPasswordForEmail,
+      signOut,
+    }}>
       {children}
     </AuthContext.Provider>
   );
